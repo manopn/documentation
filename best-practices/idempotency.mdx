@@ -1,78 +1,69 @@
----
-title: "Idempotency Keys: Avoid Duplicate Charges in CertoPay"
-sidebarTitle: "Idempotency"
-description: "Use Idempotency-Key headers to safely retry failed payment requests without charging the buyer twice. Learn the 24-hour key lifecycle and retry strategy."
----
+# Chaves de Idempotência: Evite Cobranças Duplicadas no CertoPay
 
-Network failures and timeouts are a reality of distributed systems. Without a safeguard, retrying a failed payment request could charge your customer twice for the same order. CertoPay's idempotency mechanism solves this: by attaching a unique `Idempotency-Key` header to every payment request, the API guarantees that submitting the same key more than once will return the original result — no matter how many times you retry.
+**Subtítulo da barra lateral:** Idempotência
 
-## What Is Idempotency?
+**Descrição:** Use os cabeçalhos Idempotency-Key para repetir com segurança requisições de pagamento que falharam, sem cobrar o comprador duas vezes. Aprenda o ciclo de vida de 24 horas da chave e a estratégia de retentativa.
 
-An operation is **idempotent** when performing it multiple times produces the same outcome as performing it once. In the context of CertoPay, if you send a `POST /api/payment-gateway/process` request and receive no response (timeout, network drop, 5xx error), you cannot know whether the charge was created or not. Retrying without an `Idempotency-Key` risks a duplicate charge.
+Falhas de rede e timeouts são uma realidade em sistemas distribuídos. Sem uma proteção, repetir uma requisição de pagamento que falhou pode cobrar seu cliente duas vezes pelo mesmo pedido. O mecanismo de idempotência do CertoPay resolve isso: ao anexar um cabeçalho `Idempotency-Key` único a cada requisição de pagamento, a API garante que enviar a mesma chave mais de uma vez retornará o resultado original — não importa quantas vezes você tente novamente.
 
-When you include an `Idempotency-Key`:
-- The **first** request is processed normally and the result is stored.
-- Any **subsequent** request with the **same key** receives the stored result immediately — the charge is **not processed again**.
-- A **different key** always triggers a brand-new charge attempt.
+## O Que É Idempotência?
 
-<Note>
-  Idempotency protection applies specifically to `POST /api/payment-gateway/process`. Always include the header on every call to this endpoint.
-</Note>
+Uma operação é **idempotente** quando executá-la múltiplas vezes produz o mesmo resultado que executá-la uma única vez. No contexto do CertoPay, se você enviar uma requisição `POST /api/payment-gateway/process` e não receber resposta (timeout, queda de rede, erro 5xx), você não tem como saber se a cobrança foi criada ou não. Repetir a requisição sem um `Idempotency-Key` arrisca uma cobrança duplicada.
 
-## Key Lifecycle: 24-Hour Window
+Ao incluir um `Idempotency-Key`:
+- A **primeira** requisição é processada normalmente e o resultado é armazenado.
+- Qualquer requisição **subsequente** com a **mesma chave** recebe o resultado armazenado imediatamente — a cobrança **não é processada novamente**.
+- Uma chave **diferente** sempre dispara uma nova tentativa de cobrança.
 
-Each `Idempotency-Key` is valid for **24 hours** from the time of the first request that used it.
+> **Nota:** A proteção de idempotência se aplica especificamente ao endpoint `POST /api/payment-gateway/process`. Sempre inclua o cabeçalho em toda chamada a esse endpoint.
 
-| Period | Behavior |
+## Ciclo de Vida da Chave: Janela de 24 Horas
+
+Cada `Idempotency-Key` é válida por **24 horas** a partir do momento da primeira requisição que a utilizou.
+
+| Período | Comportamento |
 |---|---|
-| Within 24 hours | Same key → returns cached original result |
-| After 24 hours | Key expires; the same UUID can be safely reused for a new charge attempt |
+| Dentro de 24 horas | Mesma chave → retorna o resultado original em cache |
+| Após 24 horas | A chave expira; o mesmo UUID pode ser reutilizado com segurança para uma nova tentativa de cobrança |
 
-If a charge genuinely failed and 24 hours have passed, you may reuse the original key — or generate a new UUID for clarity. The important rule is: **within a 24-hour window, never reuse a key for a different order or a different amount**.
+Se uma cobrança realmente falhou e 24 horas já se passaram, você pode reutilizar a chave original — ou gerar um novo UUID para maior clareza. A regra importante é: **dentro de uma janela de 24 horas, nunca reutilize uma chave para um pedido ou valor diferente.**
 
-## How to Generate an Idempotency Key
+## Como Gerar uma Chave de Idempotência
 
-Use a **UUID v4** — a randomly generated, universally unique identifier. Generate **one key per charge attempt** and store it alongside the order record in your database before making the request.
+Use um **UUID v4** — um identificador gerado aleatoriamente e universalmente único. Gere **uma chave por tentativa de cobrança** e armazene-a junto ao registro do pedido em seu banco de dados antes de fazer a requisição.
 
-<CodeGroup>
-
-```javascript Node.js
+**Node.js**
+```javascript
 import { v4 as uuidv4 } from 'uuid';
 
 const idempotencyKey = uuidv4();
-// e.g. "550e8400-e29b-41d4-a716-446655440001"
+// ex.: "550e8400-e29b-41d4-a716-446655440001"
 ```
 
-```python Python
+**Python**
+```python
 import uuid
 
 idempotency_key = str(uuid.uuid4())
-# e.g. "550e8400-e29b-41d4-a716-446655440001"
+# ex.: "550e8400-e29b-41d4-a716-446655440001"
 ```
 
-</CodeGroup>
+> **Dica:** Persista a chave de idempotência no seu banco de dados **antes** de fazer a chamada à API — não depois. Se sua aplicação travar no meio do processo, você precisa que a chave esteja disponível para repetir a requisição corretamente.
 
-<Tip>
-  Persist the idempotency key in your database **before** making the API call — not after. If your application crashes mid-flight, you need the key available to retry correctly.
-</Tip>
+## Estratégia de Retentativa
 
-## Retry Strategy
+Siga estes passos sempre que chamar `POST /api/payment-gateway/process`:
 
-Follow these steps every time you call `POST /api/payment-gateway/process`:
+**1. Gere uma chave UUID v4 antes da primeira tentativa**
+Crie a chave, salve-a no seu banco de dados junto ao pedido pendente e então faça a requisição com o cabeçalho `Idempotency-Key` definido.
 
-<Steps>
-  <Step title="Generate a UUID v4 key before the first attempt">
-    Create the key, save it to your database alongside the pending order, then make the request with the `Idempotency-Key` header set.
-  </Step>
-  <Step title="On timeout or 5xx error, retry with the SAME key">
-    A timeout or server error means the outcome is unknown. Retry the identical request body with the **exact same** key. CertoPay will either return the original result (if the first attempt succeeded) or process the charge for the first time (if it did not).
-  </Step>
-  <Step title="For a genuinely new charge, generate a NEW key">
-    If the customer is making a second, separate purchase — or if the previous charge was confirmed as failed and you want to start fresh — generate a brand-new UUID v4. Never reuse a key across different orders or amounts within its 24-hour validity window.
-  </Step>
-</Steps>
+**2. Em caso de timeout ou erro 5xx, repita com a MESMA chave**
+Um timeout ou erro de servidor significa que o resultado é desconhecido. Repita o mesmo corpo de requisição com a chave **exatamente** igual. O CertoPay retornará o resultado original (se a primeira tentativa teve sucesso) ou processará a cobrança pela primeira vez (se não teve).
 
-## Full Request Example
+**3. Para uma cobrança genuinamente nova, gere uma NOVA chave**
+Se o cliente está fazendo uma segunda compra, separada — ou se a cobrança anterior foi confirmada como falha e você quer começar do zero — gere um novo UUID v4. Nunca reutilize uma chave entre pedidos ou valores diferentes dentro da sua janela de validade de 24 horas.
+
+## Exemplo Completo de Requisição
 
 ```bash
 curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/process \
@@ -86,22 +77,18 @@ curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/process \
   }'
 ```
 
-The `Idempotency-Key` header is sent alongside your `X-Api-Key` authentication header. Both are required for every call to the process endpoint.
+O cabeçalho `Idempotency-Key` é enviado junto com seu cabeçalho de autenticação `X-Api-Key`. Ambos são obrigatórios em toda chamada ao endpoint de processamento.
 
-## Common Mistakes
+## Erros Comuns
 
-<Warning>
-  **Never change the request body when retrying with the same key.** If CertoPay detects the same `Idempotency-Key` paired with a different payload, the request will be rejected with an error. The key is bound to the original request data for the duration of its validity window.
-</Warning>
+> **Aviso:** **Nunca altere o corpo da requisição ao repeti-la com a mesma chave.** Se o CertoPay detectar a mesma `Idempotency-Key` associada a um payload diferente, a requisição será rejeitada com erro. A chave fica vinculada aos dados da requisição original durante toda a sua janela de validade.
 
-<Warning>
-  **Never reuse a key across different orders.** Generating a single key and sharing it across multiple charge attempts — even for the same customer — defeats the purpose of idempotency and will cause unexpected failures.
-</Warning>
+> **Aviso:** **Nunca reutilize uma chave entre pedidos diferentes.** Gerar uma única chave e compartilhá-la entre múltiplas tentativas de cobrança — mesmo para o mesmo cliente — anula o propósito da idempotência e causará falhas inesperadas.
 
-| Scenario | Key to use |
+| Cenário | Chave a usar |
 |---|---|
-| Retry after timeout | **Same** key |
-| Retry after 5xx error | **Same** key |
-| New purchase by the same customer | **New** key |
-| Same purchase, different amount | **New** key |
-| Re-attempting after 24-hour expiry | Same key is safe, or generate a new one |
+| Repetição após timeout | Mesma chave |
+| Repetição após erro 5xx | Mesma chave |
+| Nova compra pelo mesmo cliente | Nova chave |
+| Mesma compra, valor diferente | Nova chave |
+| Nova tentativa após expiração de 24 horas | Mesma chave é segura, ou gere uma nova |
