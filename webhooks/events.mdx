@@ -1,40 +1,41 @@
 ---
-title: "CertoPay Webhook Events: All Transaction Lifecycle Events"
-sidebarTitle: "Events"
-description: "Complete list of webhook events fired by CertoPay. Covers all transaction lifecycle changes including payment, refund, chargeback, and expiration."
+
+title: "Eventos de Webhook da CertoPay: Todos os Eventos do Ciclo de Vida da Transação"
+sidebarTitle: "Eventos"
+description: "Lista completa dos eventos de webhook enviados pela CertoPay. Abrange todas as mudanças no ciclo de vida da transação, incluindo pagamento, reembolso, chargeback e expiração."
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Sempre que uma transação avança em seu ciclo de vida — desde sua criação até o pagamento, reembolso ou expiração — a CertoPay envia um evento de webhook correspondente para o endpoint cadastrado. Compreender cada evento e saber qual ação tomar em resposta é essencial para criar uma integração confiável e resistente a fraudes. Esta página documenta todos os tipos de eventos que você pode receber, incluindo exemplos de payload e a lógica de tratamento recomendada para cada um.
+
 ---
 
-Every time a transaction moves through its lifecycle — from creation through payment, refund, or expiration — CertoPay fires a corresponding webhook event to your registered endpoint. Understanding each event and knowing the right action to take in response is essential for building a reliable, fraud-resistant integration. This page documents every event type you may receive, with sample payloads and recommended handling logic for each.
+## Todos os Eventos Disponíveis
 
----
+A tabela abaixo lista todos os tipos de eventos que a CertoPay pode enviar. Cada nome de evento segue a convenção `resource.action` e representa uma transição específica no ciclo de vida da transação.
 
-## All Available Events
-
-The table below lists every event type that CertoPay can deliver. Each event name follows the `resource.action` convention and maps to a specific transition in the transaction lifecycle.
-
-| Event                     | Description                                                        |
-|---------------------------|--------------------------------------------------------------------|
-| `transaction.created`     | A new transaction has been created and is awaiting payment.        |
-| `transaction.paid`        | Payment has been confirmed and the transaction is fully settled.   |
-| `transaction.refused`     | The payment attempt was declined by the processor or issuer.       |
-| `transaction.refunded`    | A full or partial refund has been successfully processed.          |
-| `transaction.chargeback`  | The buyer has disputed the charge and a chargeback has been filed. |
-| `transaction.expired`     | A PIX QR code or Boleto has passed its expiration date unpaid.     |
-| `transaction.cancelled`   | The transaction was cancelled before payment was captured.         |
+| Evento                   | Descrição                                                             |
+| ------------------------ | --------------------------------------------------------------------- |
+| `transaction.created`    | Uma nova transação foi criada e está aguardando pagamento.            |
+| `transaction.paid`       | O pagamento foi confirmado e a transação foi liquidada com sucesso.   |
+| `transaction.refused`    | A tentativa de pagamento foi recusada pelo processador ou emissor.    |
+| `transaction.refunded`   | Um reembolso total ou parcial foi processado com sucesso.             |
+| `transaction.chargeback` | O comprador contestou a cobrança e um chargeback foi iniciado.        |
+| `transaction.expired`    | Um QR Code PIX ou Boleto expirou sem que o pagamento fosse realizado. |
+| `transaction.cancelled`  | A transação foi cancelada antes da captura do pagamento.              |
 
 <Note>
-  All events share the same JSON envelope structure. Only the `event` field value and certain fields inside the `data` object differ between event types. See [Webhook Overview — Payload Format](/webhooks/overview#webhook-payload-format) for a full description of the envelope fields.
+  Todos os eventos compartilham a mesma estrutura de envelope JSON. Apenas o valor do campo `event` e alguns campos dentro do objeto `data` variam entre os diferentes tipos de evento. Consulte a página **Visão Geral de Webhooks — Formato do Payload** para uma descrição completa da estrutura do webhook.
 </Note>
 
 ---
 
-## Sample Payloads
+## Exemplos de Payload
 
-The payloads below show representative examples for the most commonly handled events. Use these to build and test your webhook handler before going live.
+Os exemplos abaixo mostram payloads representativos dos eventos mais comuns. Utilize-os para desenvolver e testar o tratamento dos webhooks antes de colocar sua integração em produção.
 
 ### `transaction.paid`
 
-Fired when a payment is fully confirmed. This is the event to watch for before granting access to a product or service.
+Enviado quando um pagamento é totalmente confirmado. Este é o evento que deve ser utilizado antes de liberar acesso a um produto ou serviço.
 
 ```json
 {
@@ -55,7 +56,7 @@ Fired when a payment is fully confirmed. This is the event to watch for before g
 
 ### `transaction.refused`
 
-Fired when a payment attempt is declined. Common causes include insufficient funds, incorrect card details, or fraud rules triggered at the issuer.
+Enviado quando uma tentativa de pagamento é recusada. As causas mais comuns incluem saldo insuficiente, dados incorretos do cartão ou regras antifraude acionadas pelo emissor.
 
 ```json
 {
@@ -75,7 +76,7 @@ Fired when a payment attempt is declined. Common causes include insufficient fun
 
 ### `transaction.refunded`
 
-Fired when a refund has been processed and the funds are on their way back to the buyer.
+Enviado quando um reembolso é processado e os valores estão sendo devolvidos ao comprador.
 
 ```json
 {
@@ -95,7 +96,7 @@ Fired when a refund has been processed and the funds are on their way back to th
 
 ### `transaction.expired`
 
-Fired when a PIX QR code or Boleto barcode passes its expiration timestamp without a confirmed payment.
+Enviado quando um QR Code PIX ou código de barras do boleto ultrapassa sua data de expiração sem a confirmação do pagamento.
 
 ```json
 {
@@ -113,104 +114,111 @@ Fired when a PIX QR code or Boleto barcode passes its expiration timestamp witho
 
 ---
 
-## Handling Each Event
+## Como Tratar Cada Evento
 
-Different events require different responses in your application. The guidance below describes the recommended action for each event type. Implement handlers for every event relevant to your business, even if the initial action is simply logging the status change.
+Cada evento exige uma resposta diferente da sua aplicação. As orientações abaixo descrevem a ação recomendada para cada tipo de evento. Implemente tratadores para todos os eventos relevantes ao seu negócio, mesmo que a ação inicial seja apenas registrar a alteração de status.
 
-<Accordion title="transaction.created — New transaction awaiting payment">
-  **Recommended action:** Record the transaction in your database and display the appropriate payment instructions to the buyer (e.g. the PIX QR code or Boleto barcode). No fulfillment should occur at this stage.
+<Accordion title="transaction.created — Nova transação aguardando pagamento">
+  **Ação recomendada:** Registre a transação em seu banco de dados e exiba ao comprador as instruções de pagamento correspondentes (por exemplo, o QR Code PIX ou o código de barras do boleto). Nenhuma entrega ou liberação deve ocorrer neste momento.
 
-  This event confirms the transaction object exists in CertoPay's system and is in a pending state. For synchronous payment methods (credit card), this event may be followed almost immediately by `transaction.paid` or `transaction.refused`.
-</Accordion>
+Este evento confirma que a transação foi criada no sistema da CertoPay e encontra-se em estado pendente. Para métodos de pagamento síncronos (como cartão de crédito), este evento pode ser seguido quase imediatamente por `transaction.paid` ou `transaction.refused`. </Accordion>
 
-<Accordion title="transaction.paid — Payment confirmed ✅">
-  **Recommended action:** Verify the transaction server-side by calling `GET /api/transactions/{transactionId}`, then grant the buyer access to their product or service.
+<Accordion title="transaction.paid — Pagamento confirmado ✅">
+  **Ação recomendada:** Confirme a transação no servidor realizando uma chamada para `GET /api/transactions/{transactionId}` e, somente após essa validação, conceda acesso ao produto ou serviço adquirido.
 
-  This is the most important event in the lifecycle. Typical fulfillment actions include:
-  - Activating a subscription or license
-  - Releasing a digital download
-  - Marking an order as "paid" and dispatching physical goods
-  - Sending a purchase confirmation email
+Este é o evento mais importante de todo o ciclo de vida da transação. As ações de entrega normalmente incluem:
+
+* Ativar uma assinatura ou licença
+* Liberar um download digital
+* Marcar o pedido como "pago" e iniciar o envio de produtos físicos
+* Enviar um e-mail de confirmação da compra
 
   <Warning>
-    Always confirm the status via the API before fulfilling — never fulfill based on the webhook payload alone. See [Verifying Events](/webhooks/overview#verifying-events) for the full verification flow.
+    Sempre confirme o status da transação através da API antes de realizar qualquer entrega. Nunca conceda acesso apenas com base no payload recebido via webhook. Consulte a seção **Verificando Eventos** para conhecer o fluxo completo de validação.
   </Warning>
 </Accordion>
 
-<Accordion title="transaction.refused — Payment declined ❌">
-  **Recommended action:** Notify the buyer that their payment was not accepted and offer a clear path to retry.
+<Accordion title="transaction.refused — Pagamento recusado ❌">
+  **Ação recomendada:** Informe ao comprador que o pagamento não foi aprovado e ofereça uma forma simples de tentar novamente.
 
-  Best practices for handling refusals:
-  - Display a user-friendly error message (avoid exposing raw processor codes)
-  - Suggest alternative payment methods — for example, if a card was refused, offer PIX
-  - Do **not** mark the order as failed immediately; the buyer may retry with a different payment method on a new transaction
-  - Log the refusal reason for your own analytics and fraud monitoring
+Boas práticas:
+
+* Exiba uma mensagem amigável ao usuário (evite expor códigos internos do processador)
+* Sugira métodos de pagamento alternativos — por exemplo, oferecer PIX quando um cartão for recusado
+* **Não** marque imediatamente o pedido como definitivamente falho; o comprador pode tentar novamente utilizando outra forma de pagamento em uma nova transação
+* Registre o motivo da recusa para análises internas e monitoramento antifraude
 
   <Tip>
-    For credit card refusals, the `data` object may include a `refusalReason` field with a processor-level code. Check the [API Reference](/api-reference/transactions/get) for the full list of refusal codes.
+    Para recusas em cartão de crédito, o objeto `data` pode incluir o campo `refusalReason`, contendo um código retornado pelo processador. Consulte a Referência da API para obter a lista completa dos códigos de recusa.
   </Tip>
 </Accordion>
 
-<Accordion title="transaction.refunded — Refund processed 🔄">
-  **Recommended action:** Revoke or suspend the buyer's access to the product or service, and send them a refund confirmation.
+<Accordion title="transaction.refunded — Reembolso processado 🔄">
+  **Ação recomendada:** Revogue ou suspenda o acesso do comprador ao produto ou serviço e envie uma confirmação de reembolso.
 
-  Handling steps:
-  - Mark the order as `REFUNDED` in your database
-  - Revoke access: deactivate licenses, disable account access, or cancel subscriptions
-  - Send a confirmation email with the expected timeline for funds to return (PIX refunds are typically instant; card refunds may take several business days)
-  - Update inventory or fulfillment records as needed
+Etapas recomendadas:
+
+* Atualize o pedido para o status `REFUNDED` em seu banco de dados
+* Revogue o acesso: desative licenças, bloqueie contas ou cancele assinaturas
+* Envie um e-mail informando o prazo estimado para devolução dos valores (reembolsos via PIX normalmente são imediatos; reembolsos em cartão podem levar alguns dias úteis)
+* Atualize registros de estoque ou de entrega, quando aplicável
 
   <Note>
-    Refunds may be full or partial. Check `data.amount` to determine the refunded amount and compare it against the original transaction amount to distinguish between the two.
+    O reembolso pode ser total ou parcial. Utilize `data.amount` para identificar o valor reembolsado e compare-o com o valor original da transação para determinar qual dos dois casos ocorreu.
   </Note>
 </Accordion>
 
-<Accordion title="transaction.chargeback — Dispute filed ⚠️">
-  **Recommended action:** Immediately flag the transaction for your fraud review team, suspend the buyer's access, and gather evidence to respond to the dispute through your CertoPay dashboard.
+<Accordion title="transaction.chargeback — Chargeback iniciado ⚠️">
+  **Ação recomendada:** Sinalize imediatamente a transação para sua equipe de prevenção a fraudes, suspenda o acesso do comprador e reúna todas as evidências necessárias para responder à contestação pelo painel da CertoPay.
 
-  Chargebacks represent a formal payment dispute initiated by the cardholder with their bank. Time is critical — most card networks impose tight deadlines for submitting a dispute response.
+O chargeback representa uma contestação formal iniciada pelo titular do cartão junto ao banco emissor. O tempo é um fator crítico, pois as bandeiras estabelecem prazos rigorosos para apresentação da defesa.
 
-  Recommended handling:
-  - Immediately suspend or revoke access to any product or service associated with the order
-  - Flag the buyer account for fraud review
-  - Log all transaction, delivery, and communication records that may serve as dispute evidence
-  - Monitor your dashboard for chargeback deadlines and respond promptly
+Recomenda-se:
+
+* Suspender ou revogar imediatamente o acesso ao produto ou serviço relacionado ao pedido
+* Marcar a conta do comprador para revisão antifraude
+* Registrar todas as informações da transação, entrega e comunicações que possam servir como evidência
+* Monitorar o painel da CertoPay para acompanhar os prazos e responder rapidamente
 
   <Warning>
-    Chargebacks that go unanswered are automatically decided in the buyer's favor. Respond to every chargeback within the allotted window, even if you believe the dispute is fraudulent.
+    Chargebacks que não recebem resposta são automaticamente decididos em favor do comprador. Responda a todas as contestações dentro do prazo estabelecido, mesmo quando acreditar que sejam fraudulentas.
   </Warning>
 </Accordion>
 
-<Accordion title="transaction.expired — PIX or Boleto expired 🕐">
-  **Recommended action:** Mark the associated order as expired in your system and prompt the buyer to restart the checkout process.
+<Accordion title="transaction.expired — PIX ou boleto expirado 🕐">
+  **Ação recomendada:** Marque o pedido correspondente como expirado e oriente o comprador a reiniciar o processo de pagamento.
 
-  PIX QR codes and Boleto barcodes are valid only for a limited time window. Once expired, the buyer cannot complete payment using the original instructions.
+QR Codes PIX e boletos possuem um período de validade limitado. Após a expiração, o pagamento não poderá mais ser realizado utilizando as instruções originais.
 
-  Handling steps:
-  - Update the order status to `EXPIRED` in your database
-  - Send the buyer a notification with a direct link to re-initiate checkout
-  - Do not generate a new transaction automatically on behalf of the buyer — let them choose to retry
-  - Optionally, release any inventory that was soft-reserved for this order
-</Accordion>
+Etapas recomendadas:
 
-<Accordion title="transaction.cancelled — Transaction cancelled 🚫">
-  **Recommended action:** Mark the order as cancelled in your system. No payment was collected and no refund is necessary.
+* Atualize o pedido para o status `EXPIRED`
+* Envie uma notificação ao comprador com um link para reiniciar o checkout
+* Não gere automaticamente uma nova transação; permita que o comprador decida quando tentar novamente
+* Opcionalmente, libere qualquer estoque que tenha sido reservado temporariamente para esse pedido
 
-  Cancellations differ from refusals and expirations in that they represent an explicit termination before any payment was captured. This may be triggered by your system (e.g. via an API call to cancel the transaction) or by CertoPay due to policy rules.
+  </Accordion>
 
-  Handling steps:
-  - Set the order status to `CANCELLED`
-  - Release any soft-reserved inventory
-  - Notify the buyer if the cancellation was not initiated by them
-  - Do not attempt to re-charge the buyer on the same transaction — create a new one if needed
-</Accordion>
+<Accordion title="transaction.cancelled — Transação cancelada 🚫">
+  **Ação recomendada:** Marque o pedido como cancelado em seu sistema. Nenhum pagamento foi recebido e, portanto, nenhum reembolso é necessário.
+
+Diferentemente das recusas e expirações, um cancelamento representa o encerramento explícito da transação antes da captura do pagamento. Isso pode ocorrer por uma ação da sua aplicação (como uma chamada à API para cancelamento) ou por regras internas da CertoPay.
+
+Etapas recomendadas:
+
+* Atualize o pedido para o status `CANCELLED`
+* Libere qualquer estoque reservado temporariamente
+* Notifique o comprador caso o cancelamento não tenha sido iniciado por ele
+* Não tente cobrar novamente utilizando a mesma transação; crie uma nova transação, se necessário
+
+  </Accordion>
 
 ---
 
-## Event Delivery Guarantees
+## Garantias de Entrega dos Eventos
 
 <Note>
-  CertoPay guarantees **at-least-once delivery** for all events. Your webhook handler must be **idempotent** — processing the same event a second time should not result in duplicate fulfillment, double refunds, or other unintended side effects. Use `data.transactionId` as the idempotency key when recording state changes in your database.
+  A CertoPay garante a entrega dos eventos utilizando o modelo **at-least-once delivery** (entrega de pelo menos uma vez). Por esse motivo, seu endpoint de webhook deve ser **idempotente**: processar o mesmo evento mais de uma vez não deve gerar entregas duplicadas, reembolsos duplicados ou qualquer outro efeito colateral indesejado. Utilize `data.transactionId` como chave de idempotência ao registrar alterações de estado em seu banco de dados.
 </Note>
 
-For more on delivery retries, history, and manual re-triggering, see the [Webhook Overview — Handling Deliveries](/webhooks/overview#handling-deliveries) page.
+Para mais informações sobre novas tentativas de entrega, histórico de eventos e reenvio manual, consulte a página **Visão Geral de Webhooks — Tratando Entregas**.
