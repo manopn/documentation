@@ -1,295 +1,185 @@
----
-title: "Credit Card Payments with CertoPay: Visa, Mastercard, Elo"
-sidebarTitle: "Credit Card"
-description: "Process Visa, Mastercard, and Elo credit cards with installments. Use card tokenization for repeat customers and recurring charges."
----
+# Pagamentos com Cartão de Crédito via CertoPay: Visa, Mastercard, Elo
 
-CertoPay supports credit card payments for the three most widely issued card brands in Brazil — Visa, Mastercard, Elo, Hipercard, Hiper, American Express, Diners Club, JCB, Aura, Discover. Charges are authorized and captured in a single step, so an approved response with `status: CAPTURED` means funds are already reserved. You can split payments into up to 12 installments (`parcelamento`), and for repeat customers or subscription products you can tokenize the card and charge the stored token on future orders without asking the buyer to re-enter their details.
+**Subtítulo da barra lateral:** Cartão de Crédito
 
-## Supported Brands
+**Descrição:** Processe cartões Visa, Mastercard e Elo com parcelamento. Use a tokenização de cartão para clientes recorrentes e cobranças contínuas.
 
-| Brand | Single charge | Installments | Tokenization |
+O CertoPay suporta pagamentos com cartão de crédito para as principais bandeiras emitidas no Brasil — Visa, Mastercard, Elo, Hipercard, Hiper, American Express, Diners Club, JCB, Aura, Discover. As cobranças são autorizadas e capturadas em uma única etapa, então uma resposta aprovada com `status: CAPTURED` significa que os fundos já estão reservados. Você pode dividir os pagamentos em até 12 parcelas (parcelamento) e, para clientes recorrentes ou produtos por assinatura, pode tokenizar o cartão e cobrar o token armazenado em pedidos futuros sem pedir que o comprador digite os dados novamente.
+
+## Bandeiras Suportadas
+
+| Bandeira | Cobrança única | Parcelamento | Tokenização |
 | --- | --- | --- | --- |
-| Visa | ✅ | ✅ Up to 12× | ✅ |
-| Mastercard | ✅ | ✅ Up to 12× | ✅ |
-| Elo | ✅ | ✅ Up to 12× | ✅ |
-| Hipercard | ✅ | ✅ Up to 12× | ✅ |
-| Hiper | ✅ | ✅ Up to 12× | ✅ |
-| American Expess | ✅ | ✅ Up to 12× | ✅ |
-| Diners Club | ✅ | ✅ Up to 12× | ✅ |
-| JCB | ✅ | ✅ Up to 12× | ✅ |
-| Aura | ✅ | ✅ Up to 12× | ✅ |
-| Discover | ✅ | ✅ Up to 12× | ✅ |
+| Visa | ✅ | ✅ Até 12× | ✅ |
+| Mastercard | ✅ | ✅ Até 12× | ✅ |
+| Elo | ✅ | ✅ Até 12× | ✅ |
+| Hipercard | ✅ | ✅ Até 12× | ✅ |
+| Hiper | ✅ | ✅ Até 12× | ✅ |
+| American Express | ✅ | ✅ Até 12× | ✅ |
+| Diners Club | ✅ | ✅ Até 12× | ✅ |
+| JCB | ✅ | ✅ Até 12× | ✅ |
+| Aura | ✅ | ✅ Até 12× | ✅ |
+| Discover | ✅ | ✅ Até 12× | ✅ |
 
-## Two Ways to Charge a Card
+## Duas Formas de Cobrar um Cartão
 
-<Tabs>
-  <Tab title="Option A — Direct Card Data">
-    Send the full card details in the payment request. This is the simplest integration path for one-time purchases.
+### Opção A — Dados Diretos do Cartão
 
-    <Warning>
-      Your server must handle raw card numbers only over HTTPS. Never log or store card numbers, CVVs, or expiry dates — this is a PCI DSS requirement. For repeat customers, use **Option B (tokenization)** instead.
-    </Warning>
+Envie os dados completos do cartão na requisição de pagamento. Este é o caminho de integração mais simples para compras únicas.
 
-    ### Request
+> **Aviso:** Seu servidor deve manipular números brutos de cartão apenas via HTTPS. Nunca registre em log ou armazene números de cartão, CVVs ou datas de validade — isso é uma exigência do PCI DSS. Para clientes recorrentes, use a **Opção B (tokenização)**.
 
-    ```http
-    POST /api/payment-gateway/process
-    X-Api-Key: sk_live_sua_chave_aqui
-    Idempotency-Key: 550e8400-e29b-41d4-a716-446655440003
-    Content-Type: application/json
-    
-    {
-      "orderId": "uuid-do-pedido",
-      "method": "CARD",
-      "amount": 29700,
-      "installments": 3,
-      "cardHolderName": "JOAO DA SILVA",
-      "cardNumber": "4111111111111111",
-      "cardExpirationMonth": "12",
-      "cardExpirationYear": "28",
-      "cardSecurityCode": "123",
-      "cardBrand": "Visa",
-      "buyerDoc": "12345678900",
-      "buyerBirthdate": "1990-05-20",
-      "buyerCellNumber": "(11) 99999-9999",
-      "buyerAddress": {
-        "postal_code": "01310930",
-        "street": "Avenida Paulista",
-        "number": "100",
-        "neighborhood": "Bela Vista",
-        "city": "São Paulo",
-        "state": "SP"
-      }
-    }
-    ```
+#### Requisição
 
-    ### Request Fields
+```http
+POST /api/payment-gateway/process
+X-Api-Key: sk_live_sua_chave_aqui
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440003
+Content-Type: application/json
 
-    <ParamField body="orderId" type="string" required>
-      The unique identifier for the order, obtained from `POST /api/orders`.
-    </ParamField>
+{
+  "orderId": "uuid-do-pedido",
+  "method": "CARD",
+  "amount": 29700,
+  "installments": 3,
+  "cardHolderName": "JOAO DA SILVA",
+  "cardNumber": "4111111111111111",
+  "cardExpirationMonth": "12",
+  "cardExpirationYear": "28",
+  "cardSecurityCode": "123",
+  "cardBrand": "Visa",
+  "buyerDoc": "12345678900",
+  "buyerBirthdate": "1990-05-20",
+  "buyerCellNumber": "(11) 99999-9999",
+  "buyerAddress": {
+    "postal_code": "01310930",
+    "street": "Avenida Paulista",
+    "number": "100",
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP"
+  }
+}
+```
 
-    <ParamField body="method" type="string" required>
-      Must be `"CARD"` to route the charge through the credit card rail.
-    </ParamField>
+#### Campos da Requisição
 
-    <ParamField body="amount" type="integer" required>
-      The total charge amount in **centavos**. Example: R\$ 297,00 → `29700`.
-    </ParamField>
+- **orderId** (`string`, obrigatório): O identificador único do pedido, obtido em `POST /api/orders`.
+- **method** (`string`, obrigatório): Deve ser `"CARD"` para direcionar a cobrança pelo trilho de cartão de crédito.
+- **amount** (`integer`, obrigatório): O valor total da cobrança em **centavos**. Exemplo: R$ 297,00 → `29700`.
+- **installments** (`integer`, obrigatório): Número de parcelas. Use `1` para cobrança única, ou `2`–`12` para dividir o pagamento. O `amount` total é dividido igualmente entre as parcelas.
+- **cardHolderName** (`string`, obrigatório): Nome do titular do cartão exatamente como impresso no cartão, em maiúsculas. Exemplo: `"JOAO DA SILVA"`.
+- **cardNumber** (`string`, obrigatório): Número completo do cartão, somente dígitos, sem espaços ou hífens. Exemplo: `"4111111111111111"`.
+- **cardExpirationMonth** (`string`, obrigatório): Mês de validade com dois dígitos. Exemplo: `"12"`.
+- **cardExpirationYear** (`string`, obrigatório): Ano de validade com dois dígitos. Exemplo: `"28"` para 2028.
+- **cardSecurityCode** (`string`, obrigatório): Código de segurança do cartão (CVV/CVC) — 3 dígitos para Visa/Mastercard/Elo. Nunca armazene este valor.
+- **cardBrand** (`string`, obrigatório): Bandeira do cartão. Valores aceitos: `"Visa"`, `"Mastercard"`, `"Elo"`.
+- **buyerDoc** (`string`, obrigatório): CPF do comprador — exatamente 11 dígitos numéricos, sem pontuação. Exemplo: `"12345678900"`.
+- **buyerBirthdate** (`string`, obrigatório): Data de nascimento do comprador no formato `AAAA-MM-DD`. Exemplo: `"1990-05-20"`.
+- **buyerCellNumber** (`string`, obrigatório): Número de celular do comprador com DDD. Exemplo: `"(11) 99999-9999"`.
+- **buyerAddress** (`object`, obrigatório): Endereço de cobrança do comprador.
 
-    <ParamField body="installments" type="integer" required>
-      Number of installments. Use `1` for a single charge, or `2`–`12` to split the payment. The total `amount` is divided equally across installments.
-    </ParamField>
+  *Campos de buyerAddress:*
+  - **postal_code** (`string`, obrigatório): CEP, 8 dígitos. Exemplo: `"01310930"`.
+  - **street** (`string`, obrigatório): Nome da rua. Exemplo: `"Avenida Paulista"`.
+  - **number** (`string`, obrigatório): Número do endereço. Exemplo: `"100"`.
+  - **neighborhood** (`string`, obrigatório): Bairro. Exemplo: `"Bela Vista"`.
+  - **city** (`string`, obrigatório): Nome da cidade. Exemplo: `"São Paulo"`.
+  - **state** (`string`, obrigatório): Sigla do estado (UF), duas letras. Exemplo: `"SP"`.
 
-    <ParamField body="cardHolderName" type="string" required>
-      Cardholder name exactly as printed on the card, in uppercase. Example: `"JOAO DA SILVA"`.
-    </ParamField>
+### Opção B — Token de Cartão (Recorrência)
 
-    <ParamField body="cardNumber" type="string" required>
-      Full card number, digits only, no spaces or dashes. Example: `"4111111111111111"`.
-    </ParamField>
+Tokenize o cartão uma única vez e depois cobre o token armazenado em cada pedido subsequente. O comprador digita os dados do cartão apenas uma vez, e você nunca armazena dados brutos do cartão em seus servidores.
 
-    <ParamField body="cardExpirationMonth" type="string" required>
-      Two-digit expiration month. Example: `"12"`.
-    </ParamField>
+> **Dica:** A tokenização de cartão é **fortemente recomendada** para produtos por assinatura, sites de membros e qualquer fluxo de checkout em que os compradores retornem para compras repetidas. Ela melhora as taxas de conversão (sem fricção de redigitação) e mantém seu escopo de PCI DSS mínimo.
 
-    <ParamField body="cardExpirationYear" type="string" required>
-      Two-digit expiration year. Example: `"28"` for 2028.
-    </ParamField>
+#### Passo 1 — Tokenizar o Cartão
 
-    <ParamField body="cardSecurityCode" type="string" required>
-      Card security code (CVV/CVC) — 3 digits for Visa/Mastercard/Elo. Never store this value.
-    </ParamField>
+Chame o endpoint de tokenização quando o comprador salvar seu cartão (por exemplo, durante a configuração da conta ou no primeiro checkout):
 
-    <ParamField body="cardBrand" type="string" required>
-      Card brand. Accepted values: `"Visa"`, `"Mastercard"`, `"Elo"`.
-    </ParamField>
+```http
+POST /api/payment-gateway/tokenize-card
+X-Api-Key: sk_live_sua_chave_aqui
+Content-Type: application/json
 
-    <ParamField body="buyerDoc" type="string" required>
-      Buyer's CPF — exactly 11 numeric digits, no punctuation. Example: `"12345678900"`.
-    </ParamField>
+{
+  "customerId": "uuid-do-customer",
+  "doc": "12345678900",
+  "holderName": "JOAO DA SILVA",
+  "cardNumber": "4111111111111111",
+  "brand": "Visa",
+  "expirationMonth": "12",
+  "expirationYear": "28",
+  "securityCode": "123",
+  "birthdate": "1990-05-20",
+  "cellNumber": "(11) 99999-9999",
+  "address": {
+    "postal_code": "01310930",
+    "street": "Avenida Paulista",
+    "number": "100",
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP"
+  }
+}
+```
 
-    <ParamField body="buyerBirthdate" type="string" required>
-      Buyer's date of birth in `YYYY-MM-DD` format. Example: `"1990-05-20"`.
-    </ParamField>
+**Resposta da tokenização:**
 
-    <ParamField body="buyerCellNumber" type="string" required>
-      Buyer's mobile phone number with area code (DDD). Example: `"(11) 99999-9999"`.
-    </ParamField>
+```json
+{
+  "cardToken": "tok_abc123..."
+}
+```
 
-    <ParamField body="buyerAddress" type="object" required>
-      Buyer's billing address.
+Armazene o `cardToken` junto ao registro do cliente em seu banco de dados. Esse token representa o cartão e pode ser reutilizado em qualquer número de cobranças futuras.
 
-      <Expandable title="buyerAddress fields">
-        <ParamField body="postal_code" type="string" required>
-          Brazilian postal code (CEP), 8 digits. Example: `"01310930"`.
-        </ParamField>
+##### Campos da Requisição de Tokenização
 
-        <ParamField body="street" type="string" required>
-          Street name. Example: `"Avenida Paulista"`.
-        </ParamField>
+- **customerId** (`string`, obrigatório): O UUID interno do seu cliente. O CertoPay vincula o token a esse ID de cliente para que você possa gerenciar múltiplos cartões salvos por cliente.
+- **doc** (`string`, obrigatório): CPF do cliente — 11 dígitos numéricos. Exemplo: `"12345678900"`.
+- **holderName** (`string`, obrigatório): Nome do titular em maiúsculas, como impresso no cartão.
+- **cardNumber** (`string`, obrigatório): Número completo do cartão, somente dígitos.
+- **brand** (`string`, obrigatório): Bandeira do cartão: `"Visa"`, `"Mastercard"` ou `"Elo"`.
+- **expirationMonth** (`string`, obrigatório): Mês de validade com dois dígitos. Exemplo: `"12"`.
+- **expirationYear** (`string`, obrigatório): Ano de validade com dois dígitos. Exemplo: `"28"`.
+- **securityCode** (`string`, obrigatório): CVV do cartão — 3 dígitos. Usado apenas durante a tokenização; nunca armazenado pelo CertoPay.
+- **birthdate** (`string`, obrigatório): Data de nascimento do cliente no formato `AAAA-MM-DD`.
+- **cellNumber** (`string`, obrigatório): Número de celular do cliente com DDD.
+- **address** (`object`, obrigatório): Endereço de cobrança do cliente (mesmos subcampos de `buyerAddress`: `postal_code`, `street`, `number`, `neighborhood`, `city`, `state`).
 
-        <ParamField body="number" type="string" required>
-          Street number. Example: `"100"`.
-        </ParamField>
+---
 
-        <ParamField body="neighborhood" type="string" required>
-          Neighborhood (bairro). Example: `"Bela Vista"`.
-        </ParamField>
+#### Passo 2 — Cobrar Usando o Token
 
-        <ParamField body="city" type="string" required>
-          City name. Example: `"São Paulo"`.
-        </ParamField>
+Em cada pedido subsequente, envie `cardToken` em vez dos campos brutos do cartão. Não é necessário CVV ou número do cartão:
 
-        <ParamField body="state" type="string" required>
-          Two-letter state abbreviation (UF). Example: `"SP"`.
-        </ParamField>
-      </Expandable>
-    </ParamField>
-  </Tab>
-  <Tab title="Option B — Card Token (Recurring)">
-    Tokenize the card once, then charge the stored token on every subsequent order. The buyer only enters card details one time, and you never store raw card data on your servers.
+```http
+POST /api/payment-gateway/process
+X-Api-Key: sk_live_sua_chave_aqui
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440004
+Content-Type: application/json
 
-    <Tip>
-      Card tokenization is **strongly recommended** for subscription products, membership sites, and any checkout flow where buyers return for repeat purchases. It improves conversion rates (no re-entry friction) and keeps your PCI DSS scope minimal.
-    </Tip>
+{
+  "orderId": "uuid-do-pedido",
+  "method": "CARD",
+  "amount": 29700,
+  "installments": 1,
+  "cardToken": "tok_abc123..."
+}
+```
 
-    ### Step 1 — Tokenize the Card
+##### Campos da Cobrança via Token
 
-    Call the tokenize endpoint when the buyer saves their card (e.g., during account setup or their first checkout):
+- **orderId** (`string`, obrigatório): O identificador único do novo pedido.
+- **method** (`string`, obrigatório): Deve ser `"CARD"`.
+- **amount** (`integer`, obrigatório): Valor da cobrança em centavos.
+- **installments** (`integer`, obrigatório): Número de parcelas (`1`–`12`). Use `1` para cobranças de assinatura no valor integral.
+- **cardToken** (`string`, obrigatório): O token retornado por `POST /api/payment-gateway/tokenize-card`. Substitui todos os campos brutos do cartão.
 
-    ```http
-    POST /api/payment-gateway/tokenize-card
-    X-Api-Key: sk_live_sua_chave_aqui
-    Content-Type: application/json
-    
-    {
-      "customerId": "uuid-do-customer",
-      "doc": "12345678900",
-      "holderName": "JOAO DA SILVA",
-      "cardNumber": "4111111111111111",
-      "brand": "Visa",
-      "expirationMonth": "12",
-      "expirationYear": "28",
-      "securityCode": "123",
-      "birthdate": "1990-05-20",
-      "cellNumber": "(11) 99999-9999",
-      "address": {
-        "postal_code": "01310930",
-        "street": "Avenida Paulista",
-        "number": "100",
-        "neighborhood": "Bela Vista",
-        "city": "São Paulo",
-        "state": "SP"
-      }
-    }
-    ```
+## Resposta
 
-    **Tokenize response:**
-
-    ```json
-    {
-      "cardToken": "tok_abc123..."
-    }
-    ```
-
-    Store `cardToken` against the customer record in your database. This token represents the card and can be reused for any number of future charges.
-
-    #### Tokenize Request Fields
-
-    <ParamField body="customerId" type="string" required>
-      Your internal customer UUID. CertoPay links the token to this customer ID so you can manage multiple saved cards per customer.
-    </ParamField>
-
-    <ParamField body="doc" type="string" required>
-      Customer's CPF — 11 numeric digits. Example: `"12345678900"`.
-    </ParamField>
-
-    <ParamField body="holderName" type="string" required>
-      Cardholder name in uppercase, as printed on the card.
-    </ParamField>
-
-    <ParamField body="cardNumber" type="string" required>
-      Full card number, digits only.
-    </ParamField>
-
-    <ParamField body="brand" type="string" required>
-      Card brand: `"Visa"`, `"Mastercard"`, or `"Elo"`.
-    </ParamField>
-
-    <ParamField body="expirationMonth" type="string" required>
-      Two-digit expiration month. Example: `"12"`.
-    </ParamField>
-
-    <ParamField body="expirationYear" type="string" required>
-      Two-digit expiration year. Example: `"28"`.
-    </ParamField>
-
-    <ParamField body="securityCode" type="string" required>
-      Card CVV — 3 digits. Used only during tokenization; never stored by CertoPay.
-    </ParamField>
-
-    <ParamField body="birthdate" type="string" required>
-      Customer's date of birth in `YYYY-MM-DD` format.
-    </ParamField>
-
-    <ParamField body="cellNumber" type="string" required>
-      Customer's mobile phone number with area code.
-    </ParamField>
-
-    <ParamField body="address" type="object" required>
-      Customer's billing address (same sub-fields as `buyerAddress`: `postal_code`, `street`, `number`, `neighborhood`, `city`, `state`).
-    </ParamField>
-
-    ---
-
-    ### Step 2 — Charge Using the Token
-
-    On every subsequent order, send `cardToken` instead of raw card fields. No CVV or card number needed:
-
-    ```http
-    POST /api/payment-gateway/process
-    X-Api-Key: sk_live_sua_chave_aqui
-    Idempotency-Key: 550e8400-e29b-41d4-a716-446655440004
-    Content-Type: application/json
-    
-    {
-      "orderId": "uuid-do-pedido",
-      "method": "CARD",
-      "amount": 29700,
-      "installments": 1,
-      "cardToken": "tok_abc123..."
-    }
-    ```
-
-    #### Token Charge Fields
-
-    <ParamField body="orderId" type="string" required>
-      The unique identifier for the new order.
-    </ParamField>
-
-    <ParamField body="method" type="string" required>
-      Must be `"CARD"`.
-    </ParamField>
-
-    <ParamField body="amount" type="integer" required>
-      Charge amount in centavos.
-    </ParamField>
-
-    <ParamField body="installments" type="integer" required>
-      Number of installments (`1`–`12`). Use `1` for full-amount subscription charges.
-    </ParamField>
-
-    <ParamField body="cardToken" type="string" required>
-      The token returned by `POST /api/payment-gateway/tokenize-card`. Replaces all raw card fields.
-    </ParamField>
-  </Tab>
-</Tabs>
-
-## Response
-
-Both Option A and Option B return the same response shape:
+Tanto a Opção A quanto a Opção B retornam o mesmo formato de resposta:
 
 ```json
 {
@@ -301,34 +191,19 @@ Both Option A and Option B return the same response shape:
 }
 ```
 
-### Response Fields
+### Campos da Resposta
 
-<ResponseField name="transactionId" type="string">
-  CertoPay's unique identifier for this transaction. Store this for refund requests and dispute resolution.
-</ResponseField>
+- **transactionId** (`string`): Identificador único do CertoPay para esta transação. Armazene-o para solicitações de reembolso e resolução de disputas.
+- **status** (`string`): O resultado da tentativa de cobrança:
+  - `CAPTURED` — O cartão foi aprovado e os fundos foram reservados. Finalize o pedido.
+  - `REFUSED` — A operadora do cartão recusou a cobrança. Solicite que o comprador tente um cartão diferente.
+- **method** (`string`): Repete `"CARD"`.
+- **amount** (`integer`): Valor total da cobrança em centavos, conforme enviado.
+- **installments** (`integer`): Número de parcelas em que a cobrança foi dividida.
 
-<ResponseField name="status" type="string">
-  The outcome of the charge attempt:
+## Tratando Cartões Recusados
 
-  - `CAPTURED` — The card was approved and funds have been reserved. Fulfill the order.
-  - `REFUSED` — The card issuer declined the charge. Prompt the buyer to try a different card.
-</ResponseField>
-
-<ResponseField name="method" type="string">
-  Echoes back `"CARD"`.
-</ResponseField>
-
-<ResponseField name="amount" type="integer">
-  Total charge amount in centavos, as submitted.
-</ResponseField>
-
-<ResponseField name="installments" type="integer">
-  Number of installments the charge was split into.
-</ResponseField>
-
-## Handling Declined Cards
-
-When a card is declined, the response returns `status: REFUSED`:
+Quando um cartão é recusado, a resposta retorna `status: REFUSED`:
 
 ```json
 {
@@ -340,8 +215,6 @@ When a card is declined, the response returns `status: REFUSED`:
 }
 ```
 
-<Warning>
-  A `REFUSED` status means the issuing bank rejected the charge. Do **not** retry the same card automatically — show the buyer a message and invite them to use a different card or payment method. Repeated automatic retries on a declined card may result in the card being permanently blocked by the issuer.
-</Warning>
+> **Aviso:** Um status `REFUSED` significa que o banco emissor rejeitou a cobrança. **Não** tente novamente o mesmo cartão automaticamente — mostre ao comprador uma mensagem e convide-o a usar um cartão ou método de pagamento diferente. Tentativas automáticas repetidas em um cartão recusado podem resultar no bloqueio permanente do cartão pelo emissor.
 
-Common reasons for refusal include insufficient credit limit, security blocks from the issuing bank, or incorrect card details. You should not expose the raw decline reason to the buyer — a generic "cartão recusado" message is sufficient.
+Motivos comuns para a recusa incluem limite de crédito insuficiente, bloqueios de segurança do banco emissor ou dados incorretos do cartão. Você não deve expor o motivo bruto da recusa ao comprador — uma mensagem genérica de "cartão recusado" é suficiente.
