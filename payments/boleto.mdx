@@ -1,33 +1,28 @@
----
-title: "Boleto Payments with CertoPay: Barcodes and PDF Slips"
-sidebarTitle: "Boleto"
-description: "Issue Boleto banking slips through CertoPay. Get the barcode, digitableLine, and a PDF link. Payment confirmed via webhook within 1-3 business days."
----
+# Pagamentos com Boleto via CertoPay: Códigos de Barras e Comprovantes em PDF
 
-Boleto Bancário is a traditional Brazilian payment instrument that allows customers to pay at any bank branch, Lotérica lottery outlet, or via internet banking — no credit card or PIX key required. When a buyer selects Boleto at checkout, CertoPay generates a slip instantly and returns a barcode, a digitable line (linha digitável) for copy-paste entry, and a PDF link the buyer can download and print. Confirmation arrives via webhook within one to three business days after the buyer settles the slip.
+**Subtítulo da barra lateral:** Boleto
 
-## How It Works
+**Descrição:** Emita boletos bancários através do CertoPay. Obtenha o código de barras, a linha digitável e um link para PDF. Pagamento confirmado via webhook em até 1-3 dias úteis.
 
-<Steps>
-  <Step title="Create the Boleto charge">
-    Your server calls `POST /api/payment-gateway/process` with `"method": "BOLETO"`. CertoPay registers the charge and issues the banking slip immediately.
-  </Step>
-  <Step title="Display the slip to the buyer">
-    Show `boleto.digitableLine` as a copy-paste field for internet banking entry, and link to `boleto.pdfUrl` so the buyer can download and print the physical slip. Always display the due date (`boleto.dueDate`).
-  </Step>
-  <Step title="Buyer pays at a bank, Lotérica, or internet banking">
-    The buyer can pay at any physical or digital channel that accepts Boleto. Payment is processed by the banking network and may take up to one business day to clear.
-  </Step>
-  <Step title="Receive the confirmation webhook">
-    One to three business days after payment, CertoPay sends a `transaction.paid` event to your webhook URL. Verify with `GET /api/transactions/{id}` and fulfill the order.
-  </Step>
-</Steps>
+O Boleto Bancário é um instrumento de pagamento tradicional brasileiro que permite que os clientes paguem em qualquer agência bancária, lotérica ou via internet banking — sem necessidade de cartão de crédito ou chave PIX. Quando um comprador seleciona Boleto no checkout, o CertoPay gera o boleto instantaneamente e retorna um código de barras, uma linha digitável para entrada via copiar e colar, e um link de PDF que o comprador pode baixar e imprimir. A confirmação chega via webhook em até um a três dias úteis após o comprador liquidar o boleto.
 
-<Warning>
-  Boleto has a fixed due date. A slip that is not paid by `boleto.dueDate` is considered expired and **cannot be paid**. If the buyer misses the deadline, you must create a new charge with a fresh `Idempotency-Key`.
-</Warning>
+## Como Funciona
 
-## Request
+**1. Crie a cobrança do Boleto**
+Seu servidor chama `POST /api/payment-gateway/process` com `"method": "BOLETO"`. O CertoPay registra a cobrança e emite o boleto bancário imediatamente.
+
+**2. Exiba o boleto ao comprador**
+Mostre `boleto.digitableLine` como um campo de copiar e colar para entrada via internet banking, e link para `boleto.pdfUrl` para que o comprador possa baixar e imprimir o boleto físico. Sempre exiba a data de vencimento (`boleto.dueDate`).
+
+**3. O comprador paga em um banco, Lotérica ou internet banking**
+O comprador pode pagar em qualquer canal físico ou digital que aceite Boleto. O pagamento é processado pela rede bancária e pode levar até um dia útil para ser compensado.
+
+**4. Receba o webhook de confirmação**
+De um a três dias úteis após o pagamento, o CertoPay envia um evento `transaction.paid` para a URL do seu webhook. Verifique com `GET /api/transactions/{id}` e finalize o pedido.
+
+> **Aviso:** O Boleto tem uma data de vencimento fixa. Um boleto que não é pago até `boleto.dueDate` é considerado expirado e **não pode ser pago**. Se o comprador perder o prazo, você deve criar uma nova cobrança com um novo `Idempotency-Key`.
+
+## Requisição
 
 ```http
 POST /api/payment-gateway/process
@@ -52,56 +47,37 @@ Content-Type: application/json
 }
 ```
 
-### Request Fields
+### Campos da Requisição
 
-<ParamField body="orderId" type="string" required>
-  The unique identifier for the order, obtained from `POST /api/orders`. This links the payment transaction back to the originating order in your system.
-</ParamField>
+**orderId** (`string`, obrigatório)
+O identificador único do pedido, obtido em `POST /api/orders`. Ele vincula a transação de pagamento ao pedido de origem no seu sistema.
 
-<ParamField body="method" type="string" required>
-  Must be `"BOLETO"` to issue a banking slip.
-</ParamField>
+**method** (`string`, obrigatório)
+Deve ser `"BOLETO"` para emitir um boleto bancário.
 
-<ParamField body="amount" type="integer" required>
-  The charge amount in **centavos**. For example, R$ 297,00 → `29700`. Must be a positive integer with no decimal places.
-</ParamField>
+**amount** (`integer`, obrigatório)
+O valor da cobrança em **centavos**. Por exemplo, R$ 297,00 → `29700`. Deve ser um número inteiro positivo, sem casas decimais.
 
-<ParamField body="buyerDoc" type="string" required>
-  The buyer's CPF — exactly 11 numeric digits, no punctuation. Example: `"12345678900"`.
-</ParamField>
+**buyerDoc** (`string`, obrigatório)
+O CPF do comprador — exatamente 11 dígitos numéricos, sem pontuação. Exemplo: `"12345678900"`.
 
-<ParamField body="buyerCellNumber" type="string" required>
-  The buyer's mobile phone number, including the area code (DDD). Example: `"(11) 99999-9999"`.
-</ParamField>
+**buyerCellNumber** (`string`, obrigatório)
+O número de celular do comprador, incluindo o DDD. Exemplo: `"(11) 99999-9999"`.
 
-<ParamField body="buyerAddress" type="object" required>
-  The buyer's billing address. All sub-fields below are required and are printed on the Boleto slip.
+**buyerAddress** (`object`, obrigatório)
+O endereço de cobrança do comprador. Todos os subcampos abaixo são obrigatórios e são impressos no boleto.
 
-  <Expandable title="buyerAddress fields">
-    <ParamField body="postal_code" type="string" required>
-      Brazilian postal code (CEP), 8 digits. Example: `"01310930"`.
-    </ParamField>
-    <ParamField body="street" type="string" required>
-      Street name. Example: `"Avenida Paulista"`.
-    </ParamField>
-    <ParamField body="number" type="string" required>
-      Street number. Example: `"100"`.
-    </ParamField>
-    <ParamField body="neighborhood" type="string" required>
-      Neighborhood (bairro). Example: `"Bela Vista"`.
-    </ParamField>
-    <ParamField body="city" type="string" required>
-      City name. Example: `"São Paulo"`.
-    </ParamField>
-    <ParamField body="state" type="string" required>
-      Two-letter state abbreviation (UF). Example: `"SP"`.
-    </ParamField>
-  </Expandable>
-</ParamField>
+*Campos de buyerAddress:*
+- **postal_code** (`string`, obrigatório): CEP, 8 dígitos. Exemplo: `"01310930"`.
+- **street** (`string`, obrigatório): Nome da rua. Exemplo: `"Avenida Paulista"`.
+- **number** (`string`, obrigatório): Número do endereço. Exemplo: `"100"`.
+- **neighborhood** (`string`, obrigatório): Bairro. Exemplo: `"Bela Vista"`.
+- **city** (`string`, obrigatório): Nome da cidade. Exemplo: `"São Paulo"`.
+- **state** (`string`, obrigatório): Sigla do estado (UF), duas letras. Exemplo: `"SP"`.
 
-## Response
+## Resposta
 
-A successful request returns HTTP `200` with the following body:
+Uma requisição bem-sucedida retorna HTTP `200` com o seguinte corpo:
 
 ```json
 {
@@ -118,46 +94,38 @@ A successful request returns HTTP `200` with the following body:
 }
 ```
 
-### Response Fields
+### Campos da Resposta
 
-<ResponseField name="transactionId" type="string">
-  CertoPay's unique identifier for this transaction. Store this to query the transaction status later with `GET /api/transactions/{id}`.
-</ResponseField>
+**transactionId** (`string`)
+Identificador único do CertoPay para esta transação. Armazene-o para consultar o status da transação posteriormente com `GET /api/transactions/{id}`.
 
-<ResponseField name="status" type="string">
-  Initial status is always `PENDING` for Boleto charges. Transitions to `PAID` once the banking network confirms payment.
-</ResponseField>
+**status** (`string`)
+O status inicial é sempre `PENDING` para cobranças via Boleto. Transiciona para `PAID` quando a rede bancária confirma o pagamento.
 
-<ResponseField name="method" type="string">
-  Echoes back the payment method — `"BOLETO"`.
-</ResponseField>
+**method** (`string`)
+Repete o método de pagamento utilizado — `"BOLETO"`.
 
-<ResponseField name="amount" type="integer">
-  The charge amount in centavos, as submitted.
-</ResponseField>
+**amount** (`integer`)
+O valor da cobrança em centavos, conforme enviado.
 
-<ResponseField name="boleto.barcode" type="string">
-  The human-readable barcode representation. This is typically displayed under the barcode image in the slip PDF.
-</ResponseField>
+**boleto.barcode** (`string`)
+A representação legível do código de barras. Geralmente exibida abaixo da imagem do código de barras no PDF do boleto.
 
-<ResponseField name="boleto.digitableLine" type="string">
-  The digitable line (linha digitável) — a numeric string the buyer types into their internet banking portal to pay without scanning a physical barcode. Display this with a copy button.
-</ResponseField>
+**boleto.digitableLine** (`string`)
+A linha digitável — uma sequência numérica que o comprador digita no seu internet banking para pagar sem escanear um código de barras físico. Exiba-a com um botão de copiar.
 
-<ResponseField name="boleto.pdfUrl" type="string">
-  A URL to the Boleto PDF. Link to this so the buyer can download and print the slip, or share it via WhatsApp/email.
-</ResponseField>
+**boleto.pdfUrl** (`string`)
+Uma URL para o PDF do Boleto. Link para que o comprador possa baixar e imprimir o boleto, ou compartilhá-lo via WhatsApp/e-mail.
 
-<ResponseField name="boleto.dueDate" type="string">
-  ISO 8601 timestamp for the payment deadline. Boletos cannot be paid after this date.
-</ResponseField>
+**boleto.dueDate** (`string`)
+Timestamp em ISO 8601 referente ao prazo de pagamento. Boletos não podem ser pagos após essa data.
 
-## Displaying the Boleto to the Buyer
+## Exibindo o Boleto ao Comprador
 
-Give the buyer all three ways to access their slip:
+Ofereça ao comprador as três formas de acessar seu boleto:
 
 ```jsx
-// Example: digitable line + PDF download link
+// Exemplo: linha digitável + link de download do PDF
 <p>Vencimento: {new Date(boleto.dueDate).toLocaleDateString('pt-BR')}</p>
 
 <input readOnly value={boleto.digitableLine} />
@@ -170,13 +138,11 @@ Give the buyer all three ways to access their slip:
 </a>
 ```
 
-<Note>
-  **Always show `boleto.dueDate` prominently.** Buyers who miss the payment deadline cannot pay the expired slip — they must return to checkout so you can issue a new one. Consider sending an email reminder one day before expiry.
-</Note>
+> **Nota:** **Sempre exiba `boleto.dueDate` de forma destacada.** Compradores que perdem o prazo de pagamento não podem pagar o boleto expirado — eles precisam retornar ao checkout para que você emita um novo. Considere enviar um e-mail de lembrete um dia antes do vencimento.
 
-## Confirming Payment
+## Confirmando o Pagamento
 
-One to three business days after the buyer pays, CertoPay sends a `transaction.paid` webhook event:
+De um a três dias úteis após o comprador pagar, o CertoPay envia um evento de webhook `transaction.paid`:
 
 ```json
 {
@@ -188,17 +154,13 @@ One to three business days after the buyer pays, CertoPay sends a `transaction.p
 }
 ```
 
-<Note>
-  **Always verify webhook events server-side.** Before granting access or fulfilling an order, confirm the transaction status by calling:
+> **Nota:** **Sempre verifique os eventos de webhook no lado do servidor.** Antes de conceder acesso ou finalizar um pedido, confirme o status da transação chamando:
+>
+> ```http
+> GET /api/transactions/{transactionId}
+> X-Api-Key: sk_live_sua_chave_aqui
+> ```
+>
+> Só prossiga quando a resposta retornar `"status": "PAID"`.
 
-  ```http
-  GET /api/transactions/{transactionId}
-  X-Api-Key: sk_live_sua_chave_aqui
-  ```
-
-  Only proceed when the response returns `"status": "PAID"`.
-</Note>
-
-<Warning>
-  Do not fulfill digital goods or grant account access immediately after issuing a Boleto — the slip has not been paid yet. Hold fulfillment until the `transaction.paid` webhook is received and verified.
-</Warning>
+> **Aviso:** Não libere produtos digitais nem conceda acesso à conta imediatamente após emitir um Boleto — o boleto ainda não foi pago. Aguarde até que o webhook `transaction.paid` seja recebido e verificado antes de finalizar o pedido.
