@@ -1,55 +1,44 @@
+# Consultar Pedido por UUID — GET /api/orders/{id}
+
+**GET /api/orders/{id} — Busca um único pedido pelo UUID. Retorna os detalhes do pedido incluindo ID do cliente, valor, status e data de criação.**
+
+Use este endpoint para buscar os detalhes completos de um único pedido pelo seu UUID. Esta é a principal forma de verificar se uma cobrança específica foi paga, ainda está pendente ou foi cancelada ou expirada. Também é útil quando você precisa confirmar o valor de um pedido ou o cliente vinculado antes de iniciar um fluxo de pagamento. Passe o UUID do pedido na URL onde `{id}` aparece.
+
 ---
-title: "Retrieve an Order by UUID — GET /api/orders/{id}"
-sidebarTitle: "Get Order"
-description: "GET /api/orders/{id} — Fetch a single order by UUID. Returns the order details including customer ID, amount, status, and creation date."
+
+## Requisição
+
+| Parâmetro | Local | Tipo | Obrigatório | Descrição |
+|---|---|---|---|---|
+| `X-Api-Key` | cabeçalho | string | ✅ | Sua chave secreta de API CertoPay. Inclua em toda solicitação como `X-Api-Key: sk_live_sua_chave_aqui`. |
+| `id` | caminho (path) | string | ✅ | O UUID do pedido a ser consultado. É o `id` retornado quando o pedido foi criado via `POST /api/orders`. |
+
+Este endpoint não aceita corpo na requisição.
+
 ---
 
-Use this endpoint to fetch the complete details of a single order by its UUID. This is the primary way to check whether a specific charge has been paid, is still pending, or has been cancelled or expired. It is also useful when you need to confirm an order's amount or linked customer before initiating a payment flow. Pass the order UUID in the URL path where `{id}` appears.
+## Resposta
 
-## Request
+Uma solicitação bem-sucedida retorna **HTTP 200 OK** com o objeto completo do pedido.
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
-</ParamField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | UUID único que identifica o pedido. |
+| `customerId` | string | UUID do cliente vinculado a este pedido. |
+| `amount` | integer | Valor da cobrança em centavos (ex.: `29700` = R$ 297,00). |
+| `status` | string | Status atual do pagamento do pedido. Valores possíveis: `"PENDING"`, `"PAID"`, `"CANCELLED"`, `"EXPIRED"`. |
+| `createdAt` | string | Timestamp ISO 8601 de quando o pedido foi criado. |
 
-<ParamField path="id" type="string" required>
-  The UUID of the order to retrieve. This is the `id` returned when the order was created via `POST /api/orders`.
-</ParamField>
+---
 
-This endpoint accepts no request body.
-
-## Response
-
-A successful request returns **HTTP 200 OK** with the full order object.
-
-<ResponseField name="id" type="string">
-  Unique UUID identifying the order.
-</ResponseField>
-
-<ResponseField name="customerId" type="string">
-  UUID of the customer linked to this order.
-</ResponseField>
-
-<ResponseField name="amount" type="integer">
-  Charge amount in centavos (e.g. `29700` = R$ 297,00).
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Current payment status of the order. Possible values: `"PENDING"`, `"PAID"`, `"CANCELLED"`, `"EXPIRED"`.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp of when the order was created.
-</ResponseField>
-
-## Example
+## Exemplo
 
 ```bash
 curl https://v2.certopaybrasil.com/api/orders/uuid-do-pedido \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-```json 200 OK
+```json
 {
   "id": "uuid-do-pedido",
   "customerId": "uuid-do-customer",
