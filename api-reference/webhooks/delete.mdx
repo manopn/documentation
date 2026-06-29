@@ -1,10 +1,14 @@
 ---
-title: "Disable a Registered Webhook — DELETE /api/webhooks"
-sidebarTitle: "Disable Webhook"
-description: "DELETE /api/webhooks — Deactivate your CertoPay webhook endpoint. You will stop receiving transaction event notifications until a new URL is registered."
+
+# Desativar um Webhook Registrado — DELETE /api/webhooks
+
+**Descrição:** `DELETE /api/webhooks` — Desativa o endpoint de webhook da sua conta CertoPay. Você deixará de receber notificações de eventos de transação até que uma nova URL seja registrada.
+
 ---
 
-Use this endpoint to deactivate your currently registered webhook. Once deleted, CertoPay will stop delivering transaction event notifications to your endpoint immediately. This is useful when you need to rotate your webhook URL, temporarily pause event delivery during maintenance, or decommission a webhook receiver that is no longer in use.
+Use este endpoint para desativar o webhook atualmente registrado. Uma vez excluído, a CertoPay interrompe imediatamente a entrega de notificações de eventos de transação para o seu endpoint. Isso é útil quando você precisa trocar a URL do webhook, pausar temporariamente a entrega de eventos durante uma manutenção, ou descomissionar um receptor de webhook que não está mais em uso.
+
+---
 
 ## Endpoint
 
@@ -12,26 +16,32 @@ Use this endpoint to deactivate your currently registered webhook. Once deleted,
 DELETE https://v2.certopaybrasil.com/api/webhooks
 ```
 
-## Authentication
+---
 
-All requests must include your secret API key in the `X-Api-Key` header.
+## Autenticação
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
-</ParamField>
+Todas as requisições devem incluir sua chave de API secreta no cabeçalho `X-Api-Key`.
 
-## Example Request
+| Cabeçalho | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta da CertoPay (ex.: `sk_live_sua_chave_aqui`). |
+
+---
+
+## Exemplo de Requisição
 
 ```bash
 curl -X DELETE https://v2.certopaybrasil.com/api/webhooks \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-## Response
+---
 
-### 200 — Success
+## Resposta
 
-A successful call confirms that the webhook has been deactivated.
+### 200 — Sucesso
+
+Uma chamada bem-sucedida confirma que o webhook foi desativado.
 
 ```json
 {
@@ -40,6 +50,6 @@ A successful call confirms that the webhook has been deactivated.
 }
 ```
 
-<Warning>
-  After deleting your webhook, you will **stop receiving all transaction event notifications** — including critical events like `transaction.paid` and `transaction.failed`. Any events that occur while your webhook is inactive will not be re-delivered automatically. To resume receiving notifications, re-register a URL using [POST /api/webhooks/upsert](/api-reference/webhooks/upsert).
-</Warning>
+---
+
+> ⚠️ **Atenção:** Após excluir o webhook, você **deixará de receber todas as notificações de eventos de transação** — incluindo eventos críticos como `transaction.paid` e `transaction.failed`. Qualquer evento que ocorra enquanto o webhook estiver inativo não será reenviado automaticamente. Para retomar o recebimento de notificações, registre uma nova URL usando `POST /api/webhooks/upsert`.
