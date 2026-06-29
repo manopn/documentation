@@ -1,0 +1,78 @@
+---
+title: "GET /api/transactions — List All Payment Transactions"
+sidebarTitle: "List Transactions"
+description: "GET /api/transactions — Retrieve all payment transactions in your CertoPay account. Returns an array with status, method, amount, and timestamps."
+---
+
+Use this endpoint to retrieve the full list of payment transactions associated with your CertoPay account. Each object in the returned array contains identifying information, the payment method used, the amount in centavos, the current processing status, and timestamps for when the transaction was created and last updated. This is a read-only operation and requires no request body.
+
+## Endpoint
+
+```
+GET https://v2.certopaybrasil.com/api/transactions
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header. Keep this key secure and never expose it in client-side code.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Example Request
+
+```bash
+curl https://v2.certopaybrasil.com/api/transactions \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+Returns an array of transaction objects. An empty array (`[]`) is returned when no transactions exist yet.
+
+### 200 — Success
+
+```json
+[
+  {
+    "id": "uuid-da-transacao",
+    "orderId": "uuid-do-pedido",
+    "method": "PIX",
+    "amount": 29700,
+    "status": "PAID",
+    "createdAt": "2026-06-26T10:00:00Z",
+    "updatedAt": "2026-06-26T10:05:00Z"
+  }
+]
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier (UUID) for this transaction.
+</ResponseField>
+
+<ResponseField name="orderId" type="string">
+  UUID of the order associated with this transaction. Use this to correlate a transaction with the corresponding order in your system.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Payment method used for the transaction. Possible values: `PIX`, `BOLETO`, `CARD`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  Transaction amount expressed in centavos (e.g. `29700` = R$ 297,00). All monetary values are integers to avoid floating-point rounding issues.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the transaction (e.g. `PAID`, `PENDING`, `FAILED`, `REFUNDED`).
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp indicating when the transaction was created (e.g. `2026-06-26T10:00:00Z`).
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp indicating when the transaction record was last updated (e.g. `2026-06-26T10:05:00Z`).
+</ResponseField>

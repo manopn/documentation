@@ -1,0 +1,227 @@
+---
+title: "API Authentication and Key Management for CertoPay"
+sidebarTitle: "Authentication"
+description: "Authenticate every CertoPay API request using X-Api-Key or JWT Bearer tokens. Covers key retrieval, rotation, rate limits, and security best practices."
+---
+
+Every request to the CertoPay API must be authenticated. The primary method is an **API Key** passed in the `X-Api-Key` request header — it is stateless, easy to rotate, and the right choice for all server-to-server integrations. A **JWT Bearer token** is also supported for management operations such as key rotation when you prefer short-lived credentials.
+
+---
+
+## API Key (Recommended)
+
+API Keys are the standard way to authenticate CertoPay API calls from your backend. Include the key in the `X-Api-Key` header on every request.
+
+```bash
+curl https://v2.certopaybrasil.com/api/customers \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+<Warning>
+  Never expose your API Key in frontend JavaScript, mobile app binaries, browser extensions, or public repositories. The key grants full access to your CertoPay account — treat it with the same care as a database password. Always pass it from your server and store it in an environment variable (e.g. `CERTOPAY_API_KEY`), never in source code.
+</Warning>
+
+### Retrieve Your Current Key
+
+You can fetch metadata about your active API Key programmatically. Because this is a management operation, it requires a short-lived JWT Bearer token (obtained via the login endpoint below) rather than the API Key itself.
+
+```http
+GET /api/api-keys/me
+Authorization: Bearer {jwt_token}
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "id": "uuid",
+  "label": "Chave principal",
+  "keyPrefix": "sk_live_a1b2c3d4...",
+  "maskedKey": "sk_live_a1b2c3d4...••••••••••",
+  "active": true,
+  "rateLimit": 100,
+  "lastUsedAt": "2026-06-26T10:00:00Z",
+  "createdAt": "2026-06-01T10:00:00Z"
+}
+```
+
+<ResponseField name="id" type="string">
+  UUID of the API Key record.
+</ResponseField>
+<ResponseField name="label" type="string">
+  Human-readable label assigned to the key in the dashboard.
+</ResponseField>
+<ResponseField name="keyPrefix" type="string">
+  The visible prefix of the key (first 16 characters). Use this to identify which key is active without exposing the secret.
+</ResponseField>
+<ResponseField name="maskedKey" type="string">
+  Partially masked version of the key for display purposes only.
+</ResponseField>
+<ResponseField name="active" type="boolean">
+  Whether the key is currently active. Inactive keys return `401 Unauthorized`.
+</ResponseField>
+<ResponseField name="rateLimit" type="integer">
+  Maximum number of requests per minute allowed for this key.
+</ResponseField>
+<ResponseField name="lastUsedAt" type="string">
+  ISO 8601 timestamp of the most recent authenticated request made with this key.
+</ResponseField>
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the key was originally created.
+</ResponseField>
+
+<Warning>
+  The **full secret key** is shown only once — immediately after creation in the dashboard. If you lose your key before saving it, you must regenerate it. There is no way to recover the original value.
+</Warning>
+
+### Regenerate Your Key
+
+Regenerating issues a new secret and immediately invalidates the old one. Any in-flight requests using the previous key will fail with `401`. Update all your integrations before regenerating in production.
+
+```http
+POST /api/api-keys/me/regenerate
+Authorization: Bearer {jwt_token}
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "id": "uuid",
+  "label": "Chave principal",
+  "fullKey": "sk_live_new_full_secret_here",
+  "active": true,
+  "createdAt": "2026-06-26T12:00:00Z"
+}
+```
+
+<Tip>
+  Before rotating a key in production, deploy the new key to all your services first, then call the regenerate endpoint. This minimizes downtime to the few seconds between the rotate call and your services picking up the new value.
+</Tip>
+
+---
+
+## JWT Bearer Token (Alternative)
+
+JWT tokens are short-lived credentials suitable for management operations — retrieving key metadata, regenerating keys, and accessing the seller dashboard API. They are not recommended as a replacement for the API Key in payment flows.
+
+### Obtain a Token
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "seu@email.com",
+  "password": "sua_senha"
+}
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+<ResponseField name="accessToken" type="string">
+  A signed JWT. Include this in the `Authorization` header of management requests. Tokens expire after a short period — check the `exp` claim in the payload.
+</ResponseField>
+
+### Use the Token
+
+```bash
+curl https://v2.certopaybrasil.com/api/api-keys/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+<Note>
+  JWTs are not accepted on payment processing endpoints (`/api/payment-gateway/process`, `/api/orders`, `/api/customers`). Use your `X-Api-Key` for those calls.
+</Note>
+
+---
+
+## Rate Limits
+
+<Note>
+  The default rate limit is **100 requests per minute** per API Key. When the limit is exceeded, the API returns `HTTP 429 Too Many Requests`. Requests are counted on a rolling 60-second window. If you need a higher limit for your use case, contact [CertoPay support](mailto:suporte@certopaybrasil.com) to have your limit reviewed and increased.
+</Note>
+
+A `429` response includes a `Retry-After` header indicating the number of seconds to wait before retrying:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 12
+Content-Type: application/json
+
+{
+  "error": "rate_limit_exceeded",
+  "message": "Too many requests. Please wait before retrying.",
+  "retryAfter": 12
+}
+```
+
+---
+
+## Security Best Practices
+
+Following these practices will protect your API Key and your customers' data.
+
+<CardGroup cols={2}>
+  <Card title="Use Environment Variables" icon="lock">
+    Store your API Key in an environment variable such as `CERTOPAY_API_KEY` and read it at runtime. Never hard-code it directly in source files.
+  </Card>
+  <Card title="Separate Test & Production Keys" icon="flask">
+    Use a dedicated key for your staging/test environment and a separate key for production. This prevents accidental charges during development.
+  </Card>
+  <Card title="Restrict Key Exposure" icon="eye-slash">
+    The key must only live on your server. Never bundle it into a mobile app, browser script, or any artifact that can be decompiled or inspected by end users.
+  </Card>
+  <Card title="Rotate Keys Periodically" icon="rotate">
+    Rotate your production API Key periodically and immediately if you suspect it has been compromised. Use the regenerate endpoint and deploy the new key with zero downtime.
+  </Card>
+</CardGroup>
+
+### Environment Variable Example
+
+<CodeGroup>
+
+```bash Node.js
+# .env (never commit this file)
+CERTOPAY_API_KEY=sk_live_sua_chave_aqui
+
+# In your application
+const apiKey = process.env.CERTOPAY_API_KEY;
+```
+
+```python Python
+# .env (never commit this file)
+CERTOPAY_API_KEY=sk_live_sua_chave_aqui
+
+# In your application
+import os
+api_key = os.environ["CERTOPAY_API_KEY"]
+```
+
+```bash Docker / CI
+# Pass as an environment variable at runtime
+docker run -e CERTOPAY_API_KEY=sk_live_sua_chave_aqui myapp
+
+# Or use a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.)
+```
+
+</CodeGroup>
+
+---
+
+## Error Reference
+
+| HTTP Status | Code | Meaning |
+|---|---|---|
+| `401 Unauthorized` | `invalid_api_key` | Key is missing, malformed, or has been revoked |
+| `401 Unauthorized` | `expired_token` | JWT Bearer token has expired — re-authenticate |
+| `403 Forbidden` | `insufficient_permissions` | Key exists but lacks permission for this operation |
+| `429 Too Many Requests` | `rate_limit_exceeded` | Request rate exceeded — wait and retry |

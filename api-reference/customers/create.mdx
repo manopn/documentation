@@ -1,0 +1,82 @@
+---
+title: "Create a New Customer — POST /api/customers Guide"
+sidebarTitle: "Create Customer"
+description: "POST /api/customers — Register a new buyer in CertoPay. Accepts name, email, document (CPF), and phone. Returns the customer ID for use in orders."
+---
+
+Use this endpoint to register a new customer in your CertoPay account. A customer record stores the buyer's personal information — full name, email address, CPF document number, and phone — and must be created before you can place an order on their behalf. The returned `id` is the customer UUID you will reference in all subsequent order and payment requests.
+
+## Request
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Full legal name of the customer (e.g. `"João da Silva"`).
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Valid email address of the customer. Used for receipts and notifications (e.g. `"joao@email.com"`).
+</ParamField>
+
+<ParamField body="document" type="string" required>
+  Brazilian CPF number — exactly 11 numeric digits with no punctuation (e.g. `"12345678900"`).
+</ParamField>
+
+<ParamField body="phone" type="string" required>
+  Customer phone number in Brazilian format (e.g. `"(11) 99999-9999"`).
+</ParamField>
+
+## Response
+
+A successful request returns **HTTP 201 Created** with the newly created customer object.
+
+<ResponseField name="id" type="string">
+  Universally unique identifier (UUID) assigned to the customer. Store this value — it is required when creating orders.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Full name as provided in the request.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Email address as provided in the request.
+</ResponseField>
+
+<ResponseField name="document" type="string">
+  CPF number as provided in the request.
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  Phone number as provided in the request.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp recording when the customer record was created (e.g. `"2026-06-26T10:00:00Z"`).
+</ResponseField>
+
+## Example
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/customers \
+  -H "X-Api-Key: sk_live_sua_chave_aqui" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "João da Silva",
+    "email": "joao@email.com",
+    "document": "12345678900",
+    "phone": "(11) 99999-9999"
+  }'
+```
+
+```json 201 Created
+{
+  "id": "uuid-do-customer",
+  "name": "João da Silva",
+  "email": "joao@email.com",
+  "document": "12345678900",
+  "phone": "(11) 99999-9999",
+  "createdAt": "2026-06-26T10:00:00Z"
+}
+```

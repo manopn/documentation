@@ -1,0 +1,132 @@
+{
+  "projectType": "api-service",
+  "projectName": "CertoPay",
+  "projectDescription": "Brazilian payment gateway API supporting PIX, Boleto, and Credit Card payments for merchants and integrators.",
+  "theme": "luma",
+  "primaryColor": "#22C55E",
+  "lightColor": "#DCFCE7",
+  "darkColor": "#15803D",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "payments/overview",
+              "payments/pix",
+              "payments/boleto",
+              "payments/credit-card"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/events"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "pages": [
+              "best-practices/idempotency",
+              "best-practices/security",
+              "errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Customers",
+            "pages": [
+              "api-reference/customers/create",
+              "api-reference/customers/list",
+              "api-reference/customers/get",
+              "api-reference/customers/update",
+              "api-reference/customers/delete"
+            ]
+          },
+          {
+            "group": "Orders",
+            "pages": [
+              "api-reference/orders/create",
+              "api-reference/orders/list",
+              "api-reference/orders/get"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/process",
+              "api-reference/payments/tokenize-card",
+              "api-reference/payments/refund"
+            ]
+          },
+          {
+            "group": "Transactions",
+            "pages": [
+              "api-reference/transactions/list",
+              "api-reference/transactions/get",
+              "api-reference/transactions/events"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/upsert",
+              "api-reference/webhooks/get",
+              "api-reference/webhooks/delete",
+              "api-reference/webhooks/deliveries",
+              "api-reference/webhooks/retry"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "PIX instant payment generation (EMV QR Code + copy-paste)",
+    "Boleto banking slip issuance with PDF",
+    "Credit card processing with installments (Visa, Mastercard, Elo)",
+    "Card tokenization for recurring charges",
+    "Full and partial refunds",
+    "Webhook notifications for all transaction lifecycle events",
+    "Idempotency support to prevent duplicate charges",
+    "API Key authentication with rate limiting"
+  ],
+  "publicApiSurface": [
+    "POST /api/customers",
+    "GET /api/customers",
+    "GET /api/customers/{id}",
+    "PATCH /api/customers/{id}",
+    "DELETE /api/customers/{id}",
+    "POST /api/orders",
+    "GET /api/orders",
+    "GET /api/orders/{id}",
+    "POST /api/payment-gateway/process",
+    "POST /api/payment-gateway/tokenize-card",
+    "POST /api/payment-gateway/refund",
+    "GET /api/transactions",
+    "GET /api/transactions/{transactionId}",
+    "GET /api/transaction-events/transaction/{transactionId}",
+    "POST /api/webhooks/upsert",
+    "GET /api/webhooks",
+    "DELETE /api/webhooks",
+    "GET /api/webhooks/deliveries",
+    "POST /api/webhooks/deliveries/{deliveryId}/retry",
+    "GET /api/api-keys/me",
+    "POST /api/api-keys/me/regenerate"
+  ]
+}

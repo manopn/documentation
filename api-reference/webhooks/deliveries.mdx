@@ -1,0 +1,105 @@
+---
+title: "GET /api/webhooks/deliveries — Webhook Delivery History"
+sidebarTitle: "Deliveries"
+description: "GET /api/webhooks/deliveries — View the delivery history for your CertoPay webhooks. Filter by status or event type to troubleshoot failed deliveries."
+---
+
+This endpoint returns a log of all webhook delivery attempts made by CertoPay to your registered endpoint. Each record captures the event type, delivery outcome, HTTP response received from your server, and the time the delivery was attempted. Use the optional query parameters to filter by delivery status or event type — for example, to surface only failed deliveries that need attention or retrying.
+
+## Endpoint
+
+```
+GET https://v2.certopaybrasil.com/api/webhooks/deliveries
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="status" type="string">
+  Filter deliveries by their outcome. Accepted values: `SUCCESS`, `FAILED`, `PENDING`. Omit this parameter to return deliveries of all statuses.
+</ParamField>
+
+<ParamField query="event" type="string">
+  Filter deliveries by the event type that triggered them (e.g. `transaction.paid`, `transaction.failed`, `transaction.refunded`). Omit this parameter to return deliveries for all event types.
+</ParamField>
+
+## Example Requests
+
+Retrieve all failed deliveries:
+
+```bash
+curl "https://v2.certopaybrasil.com/api/webhooks/deliveries?status=FAILED" \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+Retrieve all deliveries for `transaction.paid` events:
+
+```bash
+curl "https://v2.certopaybrasil.com/api/webhooks/deliveries?event=transaction.paid" \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+Combine filters to retrieve failed `transaction.paid` deliveries:
+
+```bash
+curl "https://v2.certopaybrasil.com/api/webhooks/deliveries?status=FAILED&event=transaction.paid" \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+Returns an array of webhook delivery objects ordered by most recent attempt first.
+
+### 200 — Success
+
+```json
+[
+  {
+    "deliveryId": "uuid-da-entrega",
+    "event": "transaction.paid",
+    "status": "FAILED",
+    "httpStatus": 500,
+    "attemptedAt": "2026-06-26T10:05:30Z"
+  },
+  {
+    "deliveryId": "uuid-da-entrega-2",
+    "event": "transaction.created",
+    "status": "SUCCESS",
+    "httpStatus": 200,
+    "attemptedAt": "2026-06-26T10:00:05Z"
+  }
+]
+```
+
+### Response Fields
+
+<ResponseField name="deliveryId" type="string">
+  Unique identifier (UUID) for this delivery attempt. Use this value with [POST /api/webhooks/deliveries/{id}/retry](/api-reference/webhooks/retry) to manually retry a failed delivery.
+</ResponseField>
+
+<ResponseField name="event" type="string">
+  The event type that triggered this delivery (e.g. `transaction.paid`, `transaction.failed`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Outcome of the delivery attempt. Possible values: `SUCCESS`, `FAILED`, `PENDING`.
+</ResponseField>
+
+<ResponseField name="httpStatus" type="integer">
+  The HTTP status code returned by your endpoint when CertoPay attempted delivery (e.g. `200`, `500`, `404`). This field may be `null` if the request never reached your server (e.g. due to a DNS or connection error).
+</ResponseField>
+
+<ResponseField name="attemptedAt" type="string">
+  ISO 8601 timestamp for when this delivery was attempted.
+</ResponseField>
+
+<Note>
+  Use this endpoint together with [POST /api/webhooks/deliveries/{id}/retry](/api-reference/webhooks/retry) to recover missed events. Retrieve the `deliveryId` of any failed delivery from this list, then pass it to the retry endpoint to re-trigger the notification.
+</Note>

@@ -1,0 +1,66 @@
+---
+title: "Retry a Webhook Delivery — POST /api/webhooks/deliveries"
+sidebarTitle: "Retry Delivery"
+description: "POST /api/webhooks/deliveries/{deliveryId}/retry — Manually trigger a retry for a failed webhook delivery. Useful for recovering missed transaction events."
+---
+
+Use this endpoint to manually re-trigger a webhook delivery that previously failed or was not acknowledged by your server. When you initiate a retry, CertoPay sends the original event payload again to your currently registered webhook URL. This is especially helpful for recovering critical missed events — such as a `transaction.paid` notification that your server failed to process due to a temporary outage or misconfiguration.
+
+## Endpoint
+
+```
+POST https://v2.certopaybrasil.com/api/webhooks/deliveries/{deliveryId}/retry
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="deliveryId" type="string" required>
+  The unique UUID of the webhook delivery you want to retry. Retrieve this from the `deliveryId` field in the [GET /api/webhooks/deliveries](/api-reference/webhooks/deliveries) response.
+</ParamField>
+
+## Example Request
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/webhooks/deliveries/delivery-uuid/retry \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+### 200 — Success
+
+A successful call confirms that the retry has been queued and the original event payload will be re-sent to your registered webhook URL.
+
+```json
+{
+  "success": true,
+  "deliveryId": "delivery-uuid",
+  "message": "Retry queued successfully."
+}
+```
+
+### Response Fields
+
+<ResponseField name="success" type="boolean">
+  `true` when the retry was accepted and queued for delivery.
+</ResponseField>
+
+<ResponseField name="deliveryId" type="string">
+  The UUID of the delivery record that was queued for retry.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable confirmation message.
+</ResponseField>
+
+<Note>
+  To find the `deliveryId` for a failed delivery, call [GET /api/webhooks/deliveries](/api-reference/webhooks/deliveries) and filter by `status=FAILED`. Copy the `deliveryId` from any delivery you want to retry and pass it as the path parameter to this endpoint.
+</Note>

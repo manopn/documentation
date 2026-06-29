@@ -1,0 +1,186 @@
+---
+title: "PIX Payments with CertoPay: QR Codes and EMV Codes"
+sidebarTitle: "PIX"
+description: "Generate PIX QR Codes and EMV copy-paste codes instantly. CertoPay handles PIX key management and sends a webhook when payment is confirmed."
+---
+
+PIX is Brazil's instant payment system, operated by the Banco Central do Brasil, available 24 hours a day, 7 days a week — including weekends and holidays. When a buyer chooses PIX at checkout, CertoPay generates a QR Code and an EMV copy-paste string on the spot. The buyer scans the code in their banking app and payment is confirmed in seconds. CertoPay then fires a `transaction.paid` webhook so your backend can fulfill the order immediately.
+
+## How It Works
+
+<Steps>
+  <Step title="Create the PIX charge">
+    Your server calls `POST /api/payment-gateway/process` with `"method": "PIX"`. CertoPay registers the charge and returns a QR Code URL and an EMV string.
+  </Step>
+  <Step title="Display the QR Code or EMV code to the buyer">
+    Render the image from `pix.qrCodeUrl` and/or display `pix.emv` as a copy-paste field. Show the expiry time (`pix.expiresAt`) so the buyer knows how long they have to pay.
+  </Step>
+  <Step title="Buyer pays via their banking app">
+    The buyer scans the QR Code or pastes the EMV code. The payment settles instantly on the PIX network.
+  </Step>
+  <Step title="Receive the confirmation webhook">
+    CertoPay sends a `transaction.paid` event to your webhook URL. Verify the transaction with `GET /api/transactions/{id}` and then grant access or dispatch the order.
+  </Step>
+</Steps>
+
+## Request
+
+```http
+POST /api/payment-gateway/process
+X-Api-Key: sk_live_sua_chave_aqui
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001
+Content-Type: application/json
+
+{
+  "orderId": "uuid-do-pedido",
+  "method": "PIX",
+  "amount": 29700,
+  "buyerDoc": "12345678900",
+  "buyerCellNumber": "(11) 99999-9999",
+  "buyerAddress": {
+    "postal_code": "01310930",
+    "street": "Avenida Paulista",
+    "number": "100",
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP"
+  }
+}
+```
+
+### Request Fields
+
+<ParamField body="orderId" type="string" required>
+  The unique identifier for the order, obtained from `POST /api/orders`. This links the payment transaction back to the originating order in your system.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  Must be `"PIX"` to route the charge through the PIX payment rail.
+</ParamField>
+
+<ParamField body="amount" type="integer" required>
+  The charge amount in **centavos**. For example, R$ 297,00 → `29700`. Must be a positive integer with no decimal places.
+</ParamField>
+
+<ParamField body="buyerDoc" type="string" required>
+  The buyer's CPF — exactly 11 numeric digits, no punctuation. Example: `"12345678900"`.
+</ParamField>
+
+<ParamField body="buyerCellNumber" type="string" required>
+  The buyer's mobile phone number, including the area code (DDD). Example: `"(11) 99999-9999"`.
+</ParamField>
+
+<ParamField body="buyerAddress" type="object" required>
+  The buyer's billing address. All sub-fields below are required.
+
+  <Expandable title="buyerAddress fields">
+    <ParamField body="postal_code" type="string" required>
+      Brazilian postal code (CEP), 8 digits. Example: `"01310930"`.
+    </ParamField>
+    <ParamField body="street" type="string" required>
+      Street name. Example: `"Avenida Paulista"`.
+    </ParamField>
+    <ParamField body="number" type="string" required>
+      Street number. Example: `"100"`.
+    </ParamField>
+    <ParamField body="neighborhood" type="string" required>
+      Neighborhood (bairro). Example: `"Bela Vista"`.
+    </ParamField>
+    <ParamField body="city" type="string" required>
+      City name. Example: `"São Paulo"`.
+    </ParamField>
+    <ParamField body="state" type="string" required>
+      Two-letter state abbreviation (UF). Example: `"SP"`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+A successful request returns HTTP `200` with the following body:
+
+```json
+{
+  "transactionId": "uuid-da-transacao",
+  "status": "PENDING",
+  "method": "PIX",
+  "amount": 29700,
+  "pix": {
+    "emv": "00020126580014br.gov.bcb.pix...",
+    "qrCodeUrl": "https://...",
+    "expiresAt": "2026-06-26T11:00:00Z"
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="transactionId" type="string">
+  CertoPay's unique identifier for this transaction. Store this to query the transaction status later with `GET /api/transactions/{id}`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status is always `PENDING` for PIX charges. Transitions to `PAID` once the buyer completes payment.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Echoes back the payment method — `"PIX"`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  The charge amount in centavos, as submitted.
+</ResponseField>
+
+<ResponseField name="pix.emv" type="string">
+  The full EMV payload (Pix Copia e Cola). Display this in a text field with a copy button so the buyer can paste it into their banking app without scanning the QR Code.
+</ResponseField>
+
+<ResponseField name="pix.qrCodeUrl" type="string">
+  URL to a PNG image of the QR Code. Render this with an `<img>` tag in your checkout UI.
+</ResponseField>
+
+<ResponseField name="pix.expiresAt" type="string">
+  ISO 8601 timestamp indicating when the PIX charge expires. After this time the QR Code and EMV code become invalid and a new charge must be created.
+</ResponseField>
+
+## Displaying the Payment to the Buyer
+
+Use both the QR Code and the copy-paste code so buyers can choose whichever is easier on their device:
+
+```jsx
+// Example: render QR Code image and EMV copy-paste
+<img src={pix.qrCodeUrl} alt="PIX QR Code" width={240} height={240} />
+<input readOnly value={pix.emv} />
+<button onClick={() => navigator.clipboard.writeText(pix.emv)}>
+  Copiar código PIX
+</button>
+```
+
+<Warning>
+  Always display the expiry time (`pix.expiresAt`) to the buyer — ideally as a live countdown. A PIX QR Code that has expired cannot be paid; you would need to create a new charge with a fresh `Idempotency-Key`.
+</Warning>
+
+## Confirming Payment
+
+CertoPay sends a `transaction.paid` webhook event to your registered webhook URL when the PIX is settled:
+
+```json
+{
+  "event": "transaction.paid",
+  "transactionId": "uuid-da-transacao",
+  "status": "PAID",
+  "method": "PIX",
+  "amount": 29700
+}
+```
+
+<Note>
+  **Always verify webhook events server-side.** Before granting access or fulfilling an order, confirm the transaction status by calling:
+
+  ```http
+  GET /api/transactions/{transactionId}
+  X-Api-Key: sk_live_sua_chave_aqui
+  ```
+
+  Only proceed when the response returns `"status": "PAID"`.
+</Note>

@@ -1,0 +1,85 @@
+---
+title: "GET /api/transaction-events — List Transaction Events"
+sidebarTitle: "Transaction Events"
+description: "GET /api/transaction-events/transaction/{id} — Retrieve the full event history for a specific transaction, showing every status change in order."
+---
+
+This endpoint returns the complete event history for a given transaction, listing every status change in chronological order. Each event record describes a discrete state transition — for example, from `PENDING` to `PROCESSING` to `PAID`. This audit trail is invaluable for debugging payment flows, reconciling records, and investigating disputes or unexpected transaction outcomes.
+
+## Endpoint
+
+```
+GET https://v2.certopaybrasil.com/api/transaction-events/transaction/{transactionId}
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="transactionId" type="string" required>
+  The unique UUID of the transaction whose event history you want to retrieve. Obtain this from the [List Transactions](/api-reference/transactions/list) or [Get Transaction](/api-reference/transactions/get) endpoints.
+</ParamField>
+
+## Example Request
+
+```bash
+curl https://v2.certopaybrasil.com/api/transaction-events/transaction/uuid-da-transacao \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+Returns an array of event objects, ordered chronologically from oldest to newest. Each object describes a single status transition for the transaction.
+
+### 200 — Success
+
+```json
+[
+  {
+    "id": "uuid-do-evento",
+    "transactionId": "uuid-da-transacao",
+    "type": "transaction.created",
+    "status": "PENDING",
+    "createdAt": "2026-06-26T10:00:00Z"
+  },
+  {
+    "id": "uuid-do-evento-2",
+    "transactionId": "uuid-da-transacao",
+    "type": "transaction.paid",
+    "status": "PAID",
+    "createdAt": "2026-06-26T10:05:00Z"
+  }
+]
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier (UUID) for this individual event record.
+</ResponseField>
+
+<ResponseField name="transactionId" type="string">
+  UUID of the transaction this event belongs to.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  The event type describing what occurred (e.g. `transaction.created`, `transaction.paid`, `transaction.failed`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The transaction status at the time this event was recorded (e.g. `PENDING`, `PROCESSING`, `PAID`, `FAILED`).
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp for when this event was recorded.
+</ResponseField>
+
+<Note>
+  The event list is ordered chronologically — the first item represents the earliest recorded state and the last item represents the most recent. This makes it easy to trace the full lifecycle of a payment from creation to completion or failure. Use this endpoint alongside [Webhook Delivery History](/api-reference/webhooks/deliveries) for comprehensive payment flow auditing.
+</Note>

@@ -1,0 +1,216 @@
+---
+title: "CertoPay Webhook Events: All Transaction Lifecycle Events"
+sidebarTitle: "Events"
+description: "Complete list of webhook events fired by CertoPay. Covers all transaction lifecycle changes including payment, refund, chargeback, and expiration."
+---
+
+Every time a transaction moves through its lifecycle — from creation through payment, refund, or expiration — CertoPay fires a corresponding webhook event to your registered endpoint. Understanding each event and knowing the right action to take in response is essential for building a reliable, fraud-resistant integration. This page documents every event type you may receive, with sample payloads and recommended handling logic for each.
+
+---
+
+## All Available Events
+
+The table below lists every event type that CertoPay can deliver. Each event name follows the `resource.action` convention and maps to a specific transition in the transaction lifecycle.
+
+| Event                     | Description                                                        |
+|---------------------------|--------------------------------------------------------------------|
+| `transaction.created`     | A new transaction has been created and is awaiting payment.        |
+| `transaction.paid`        | Payment has been confirmed and the transaction is fully settled.   |
+| `transaction.refused`     | The payment attempt was declined by the processor or issuer.       |
+| `transaction.refunded`    | A full or partial refund has been successfully processed.          |
+| `transaction.chargeback`  | The buyer has disputed the charge and a chargeback has been filed. |
+| `transaction.expired`     | A PIX QR code or Boleto has passed its expiration date unpaid.     |
+| `transaction.cancelled`   | The transaction was cancelled before payment was captured.         |
+
+<Note>
+  All events share the same JSON envelope structure. Only the `event` field value and certain fields inside the `data` object differ between event types. See [Webhook Overview — Payload Format](/webhooks/overview#webhook-payload-format) for a full description of the envelope fields.
+</Note>
+
+---
+
+## Sample Payloads
+
+The payloads below show representative examples for the most commonly handled events. Use these to build and test your webhook handler before going live.
+
+### `transaction.paid`
+
+Fired when a payment is fully confirmed. This is the event to watch for before granting access to a product or service.
+
+```json
+{
+  "event": "transaction.paid",
+  "created_at": "2026-06-26T10:05:00Z",
+  "data": {
+    "transactionId": "uuid-da-transacao",
+    "orderId": "uuid-do-pedido",
+    "amount": 29700,
+    "method": "PIX",
+    "status": "PAID",
+    "paidAt": "2026-06-26T10:05:00Z"
+  }
+}
+```
+
+---
+
+### `transaction.refused`
+
+Fired when a payment attempt is declined. Common causes include insufficient funds, incorrect card details, or fraud rules triggered at the issuer.
+
+```json
+{
+  "event": "transaction.refused",
+  "created_at": "2026-06-26T10:05:00Z",
+  "data": {
+    "transactionId": "uuid-da-transacao",
+    "orderId": "uuid-do-pedido",
+    "amount": 29700,
+    "method": "PIX",
+    "status": "REFUSED"
+  }
+}
+```
+
+---
+
+### `transaction.refunded`
+
+Fired when a refund has been processed and the funds are on their way back to the buyer.
+
+```json
+{
+  "event": "transaction.refunded",
+  "created_at": "2026-06-26T10:05:00Z",
+  "data": {
+    "transactionId": "uuid-da-transacao",
+    "orderId": "uuid-do-pedido",
+    "amount": 29700,
+    "method": "PIX",
+    "status": "REFUNDED"
+  }
+}
+```
+
+---
+
+### `transaction.expired`
+
+Fired when a PIX QR code or Boleto barcode passes its expiration timestamp without a confirmed payment.
+
+```json
+{
+  "event": "transaction.expired",
+  "created_at": "2026-06-26T10:05:00Z",
+  "data": {
+    "transactionId": "uuid-da-transacao",
+    "orderId": "uuid-do-pedido",
+    "amount": 29700,
+    "method": "PIX",
+    "status": "EXPIRED"
+  }
+}
+```
+
+---
+
+## Handling Each Event
+
+Different events require different responses in your application. The guidance below describes the recommended action for each event type. Implement handlers for every event relevant to your business, even if the initial action is simply logging the status change.
+
+<Accordion title="transaction.created — New transaction awaiting payment">
+  **Recommended action:** Record the transaction in your database and display the appropriate payment instructions to the buyer (e.g. the PIX QR code or Boleto barcode). No fulfillment should occur at this stage.
+
+  This event confirms the transaction object exists in CertoPay's system and is in a pending state. For synchronous payment methods (credit card), this event may be followed almost immediately by `transaction.paid` or `transaction.refused`.
+</Accordion>
+
+<Accordion title="transaction.paid — Payment confirmed ✅">
+  **Recommended action:** Verify the transaction server-side by calling `GET /api/transactions/{transactionId}`, then grant the buyer access to their product or service.
+
+  This is the most important event in the lifecycle. Typical fulfillment actions include:
+  - Activating a subscription or license
+  - Releasing a digital download
+  - Marking an order as "paid" and dispatching physical goods
+  - Sending a purchase confirmation email
+
+  <Warning>
+    Always confirm the status via the API before fulfilling — never fulfill based on the webhook payload alone. See [Verifying Events](/webhooks/overview#verifying-events) for the full verification flow.
+  </Warning>
+</Accordion>
+
+<Accordion title="transaction.refused — Payment declined ❌">
+  **Recommended action:** Notify the buyer that their payment was not accepted and offer a clear path to retry.
+
+  Best practices for handling refusals:
+  - Display a user-friendly error message (avoid exposing raw processor codes)
+  - Suggest alternative payment methods — for example, if a card was refused, offer PIX
+  - Do **not** mark the order as failed immediately; the buyer may retry with a different payment method on a new transaction
+  - Log the refusal reason for your own analytics and fraud monitoring
+
+  <Tip>
+    For credit card refusals, the `data` object may include a `refusalReason` field with a processor-level code. Check the [API Reference](/api-reference/transactions/get) for the full list of refusal codes.
+  </Tip>
+</Accordion>
+
+<Accordion title="transaction.refunded — Refund processed 🔄">
+  **Recommended action:** Revoke or suspend the buyer's access to the product or service, and send them a refund confirmation.
+
+  Handling steps:
+  - Mark the order as `REFUNDED` in your database
+  - Revoke access: deactivate licenses, disable account access, or cancel subscriptions
+  - Send a confirmation email with the expected timeline for funds to return (PIX refunds are typically instant; card refunds may take several business days)
+  - Update inventory or fulfillment records as needed
+
+  <Note>
+    Refunds may be full or partial. Check `data.amount` to determine the refunded amount and compare it against the original transaction amount to distinguish between the two.
+  </Note>
+</Accordion>
+
+<Accordion title="transaction.chargeback — Dispute filed ⚠️">
+  **Recommended action:** Immediately flag the transaction for your fraud review team, suspend the buyer's access, and gather evidence to respond to the dispute through your CertoPay dashboard.
+
+  Chargebacks represent a formal payment dispute initiated by the cardholder with their bank. Time is critical — most card networks impose tight deadlines for submitting a dispute response.
+
+  Recommended handling:
+  - Immediately suspend or revoke access to any product or service associated with the order
+  - Flag the buyer account for fraud review
+  - Log all transaction, delivery, and communication records that may serve as dispute evidence
+  - Monitor your dashboard for chargeback deadlines and respond promptly
+
+  <Warning>
+    Chargebacks that go unanswered are automatically decided in the buyer's favor. Respond to every chargeback within the allotted window, even if you believe the dispute is fraudulent.
+  </Warning>
+</Accordion>
+
+<Accordion title="transaction.expired — PIX or Boleto expired 🕐">
+  **Recommended action:** Mark the associated order as expired in your system and prompt the buyer to restart the checkout process.
+
+  PIX QR codes and Boleto barcodes are valid only for a limited time window. Once expired, the buyer cannot complete payment using the original instructions.
+
+  Handling steps:
+  - Update the order status to `EXPIRED` in your database
+  - Send the buyer a notification with a direct link to re-initiate checkout
+  - Do not generate a new transaction automatically on behalf of the buyer — let them choose to retry
+  - Optionally, release any inventory that was soft-reserved for this order
+</Accordion>
+
+<Accordion title="transaction.cancelled — Transaction cancelled 🚫">
+  **Recommended action:** Mark the order as cancelled in your system. No payment was collected and no refund is necessary.
+
+  Cancellations differ from refusals and expirations in that they represent an explicit termination before any payment was captured. This may be triggered by your system (e.g. via an API call to cancel the transaction) or by CertoPay due to policy rules.
+
+  Handling steps:
+  - Set the order status to `CANCELLED`
+  - Release any soft-reserved inventory
+  - Notify the buyer if the cancellation was not initiated by them
+  - Do not attempt to re-charge the buyer on the same transaction — create a new one if needed
+</Accordion>
+
+---
+
+## Event Delivery Guarantees
+
+<Note>
+  CertoPay guarantees **at-least-once delivery** for all events. Your webhook handler must be **idempotent** — processing the same event a second time should not result in duplicate fulfillment, double refunds, or other unintended side effects. Use `data.transactionId` as the idempotency key when recording state changes in your database.
+</Note>
+
+For more on delivery retries, history, and manual re-triggering, see the [Webhook Overview — Handling Deliveries](/webhooks/overview#handling-deliveries) page.

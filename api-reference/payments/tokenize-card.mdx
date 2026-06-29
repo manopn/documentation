@@ -1,0 +1,162 @@
+---
+title: "POST /api/payment-gateway/tokenize-card — Tokenize a Card"
+sidebarTitle: "Tokenize Card"
+description: "POST /api/payment-gateway/tokenize-card — Store a card as a reusable token and charge returning customers without handling raw card data again."
+---
+
+The `/api/payment-gateway/tokenize-card` endpoint allows you to securely vault a customer's credit card with CertoPay and receive a short opaque `cardToken` in return. On every subsequent charge for that customer, pass the token in the `cardToken` field of `POST /api/payment-gateway/process` instead of transmitting raw card data — keeping sensitive PAN information off your servers and simplifying your PCI-DSS compliance scope.
+
+## Base URL
+
+```
+https://v2.certopaybrasil.com/api
+```
+
+## Endpoint
+
+```
+POST /payment-gateway/tokenize-card
+```
+
+## Request Headers
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your secret API key. This must be kept server-side at all times.
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+## Request Body
+
+<ParamField body="customerId" type="string" required>
+  Your internal identifier for the customer (UUID recommended). CertoPay associates the resulting token with this ID so you can manage multiple cards per customer.
+</ParamField>
+
+<ParamField body="doc" type="string" required>
+  The cardholder's CPF (Cadastro de Pessoas Físicas), digits only. Example: `"12345678900"`.
+</ParamField>
+
+<ParamField body="holderName" type="string" required>
+  Full name exactly as it appears on the card, in uppercase. Example: `"JOAO DA SILVA"`.
+</ParamField>
+
+<ParamField body="cardNumber" type="string" required>
+  16-digit card PAN, digits only. Example: `"4111111111111111"`.
+</ParamField>
+
+<ParamField body="brand" type="string" required>
+  Card network brand. Accepted values: `"Visa"`, `"Mastercard"`, `"Elo"`.
+</ParamField>
+
+<ParamField body="expirationMonth" type="string" required>
+  Two-digit expiration month. Example: `"12"`.
+</ParamField>
+
+<ParamField body="expirationYear" type="string" required>
+  Two-digit expiration year. Example: `"28"` for 2028.
+</ParamField>
+
+<ParamField body="securityCode" type="string" required>
+  Card CVV/CVC security code. Example: `"123"`.
+</ParamField>
+
+<ParamField body="birthdate" type="string" required>
+  The cardholder's date of birth in `YYYY-MM-DD` format. Used for anti-fraud verification. Example: `"1990-05-20"`.
+</ParamField>
+
+<ParamField body="cellNumber" type="string" required>
+  The cardholder's mobile phone number in Brazilian format. Example: `"(11) 99999-9999"`.
+</ParamField>
+
+<ParamField body="address" type="object" required>
+  The cardholder's billing address. Must match the address on file with the card issuer for AVS checks.
+
+  <Expandable title="address fields">
+    <ParamField body="postal_code" type="string" required>
+      Brazilian CEP (postal code), digits only. Example: `"01310930"`.
+    </ParamField>
+
+    <ParamField body="street" type="string" required>
+      Street name. Example: `"Avenida Paulista"`.
+    </ParamField>
+
+    <ParamField body="number" type="string" required>
+      Street number. Example: `"100"`.
+    </ParamField>
+
+    <ParamField body="neighborhood" type="string" required>
+      Neighborhood (bairro). Example: `"Bela Vista"`.
+    </ParamField>
+
+    <ParamField body="city" type="string" required>
+      City name. Example: `"São Paulo"`.
+    </ParamField>
+
+    <ParamField body="state" type="string" required>
+      Two-letter state code (UF). Example: `"SP"`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Example Request
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/tokenize-card \
+  -H "X-Api-Key: sk_live_sua_chave_aqui" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": "uuid-do-customer",
+    "doc": "12345678900",
+    "holderName": "JOAO DA SILVA",
+    "cardNumber": "4111111111111111",
+    "brand": "Visa",
+    "expirationMonth": "12",
+    "expirationYear": "28",
+    "securityCode": "123",
+    "birthdate": "1990-05-20",
+    "cellNumber": "(11) 99999-9999",
+    "address": {
+      "postal_code": "01310930",
+      "street": "Avenida Paulista",
+      "number": "100",
+      "neighborhood": "Bela Vista",
+      "city": "São Paulo",
+      "state": "SP"
+    }
+  }'
+```
+
+## Response Fields
+
+<ResponseField name="cardToken" type="string">
+  An opaque token that represents the stored card. This value is safe to persist in your database and pass to future `POST /api/payment-gateway/process` requests in the `cardToken` field. It does not encode any recoverable card data.
+</ResponseField>
+
+## Example Response
+
+```json
+{
+  "cardToken": "tok_abc123..."
+}
+```
+
+<Tip>
+  Pass the `cardToken` value in place of all raw card fields (`cardNumber`, `cardHolderName`, `cardExpirationMonth`, `cardExpirationYear`, `cardSecurityCode`, `cardBrand`) in future `POST /api/payment-gateway/process` calls. This removes the need to re-collect card details from returning customers and keeps your integration out of PCI-DSS scope for card data storage.
+</Tip>
+
+---
+
+## Error Responses
+
+| HTTP Status | Meaning |
+|---|---|
+| `400 Bad Request` | A required field is missing or malformed. Check the `errors` array in the response body for field-level details. |
+| `401 Unauthorized` | The `X-Api-Key` header is missing or invalid. |
+| `422 Unprocessable Entity` | The card data was rejected during validation (e.g. expired card, invalid CVV). |
+| `500 Internal Server Error` | An unexpected error occurred on CertoPay's side. Retry with exponential back-off. |
+
+<Warning>
+  The tokenization endpoint must only be called from your **server**. Never call it from a browser or mobile app directly, as doing so would expose your `X-Api-Key`. Use a client-side form to collect card data and POST it to your own backend, which then calls CertoPay.
+</Warning>

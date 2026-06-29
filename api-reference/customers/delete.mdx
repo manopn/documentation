@@ -1,0 +1,38 @@
+---
+title: "Delete Customer Record — DELETE /api/customers/{id}"
+sidebarTitle: "Delete Customer"
+description: "DELETE /api/customers/{id} — Permanently remove a customer from your CertoPay account. This action is irreversible and cannot be undone."
+---
+
+Use this endpoint to permanently delete a customer record from your CertoPay account. Once deleted, the customer's UUID is no longer valid and cannot be used in orders or payment requests. This action is typically used for LGPD data-erasure requests or when cleaning up test data from your account. Pass the customer UUID in the URL path where `{id}` appears.
+
+<Warning>
+  **This action is irreversible.** Deleting a customer permanently removes their record from CertoPay. Any orders or payments previously associated with this customer will retain their historical data, but you will no longer be able to create new transactions for this customer ID. There is no way to recover a deleted customer — you would need to register them again via `POST /api/customers`.
+</Warning>
+
+## Request
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The UUID of the customer to permanently delete. This is the `id` returned when the customer was created.
+</ParamField>
+
+This endpoint accepts no request body.
+
+## Response
+
+A successful request returns **HTTP 204 No Content** with an empty response body, confirming the customer has been deleted.
+
+## Example
+
+```bash
+curl -X DELETE https://v2.certopaybrasil.com/api/customers/uuid-do-customer \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+```text 204 No Content
+(empty body)
+```

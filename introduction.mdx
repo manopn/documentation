@@ -1,0 +1,134 @@
+---
+title: "CertoPay: Payment Gateway for Developers"
+sidebarTitle: "Introduction"
+description: "CertoPay is a Brazilian PSP API that enables PIX, Boleto, and Credit Card payments. Learn what you can build and how the API is structured."
+---
+
+CertoPay is a Brazilian Payment Service Provider (PSP) that gives developers a single, unified API to accept payments in Brazil. Whether you need instant PIX transfers, traditional Boleto banking slips, or installment-based credit card charges, CertoPay handles the complexity of the Brazilian financial ecosystem so you can focus on building your product.
+
+## Payment Methods
+
+Brazil has a unique payments landscape, and CertoPay supports all three major payment rails used by Brazilian consumers and businesses.
+
+<CardGroup cols={3}>
+  <Card title="PIX" icon="bolt" href="/payments/pix">
+    Instant payment network operated by the Banco Central do Brasil. Funds settle in seconds, 24/7/365. Payments are initiated via a scannable QR Code or copy-paste EMV string.
+  </Card>
+
+  <Card title="Boleto" icon="barcode" href="/payments/boleto">
+    A traditional Brazilian banking slip (boleto bancário) that can be paid at any bank branch, ATM, lottery house, or internet banking portal. Settlement typically takes 1–3 business days.
+  </Card>
+
+  <Card title="Credit Card" icon="credit-card" href="/payments/credit-card">
+    Supports Visa, Mastercard, and Elo. Customers can pay in full or split the total across up to 12 monthly installments (parcelamento).
+  </Card>
+</CardGroup>
+
+## How the API Is Structured
+
+The CertoPay API is organized around four core resources that reflect the natural lifecycle of a payment. Every request is authenticated via an `X-Api-Key` header, and all endpoints return standard JSON responses.
+
+| Resource | Base Path | Purpose |
+| --- | --- | --- |
+| Customers | `/api/customers` | Create and manage buyer records |
+| Orders | `/api/orders` | Represent a purchase intent with an amount |
+| Payment Gateway | `/api/payment-gateway/process` | Initiate a payment against an order |
+| Transactions | `/api/transactions` | Query and manage transaction state |
+
+## Payment Flow Overview
+
+Every payment on CertoPay follows the same four-stage flow, regardless of method. Understanding this model makes it straightforward to integrate any payment type.
+
+```text
+Customer → Order → Process Payment
+```
+
+<Steps>
+  <Step title="Create a Customer">
+    Register the buyer's details — name, email, CPF, and phone number — once. The returned `customerId` can be reused for future purchases.
+  </Step>
+  <Step title="Create an Order">
+    Attach the customer to an order by providing their `customerId` and the total `amount` in **centavos** (e.g., R\$297,00 → `29700`). The order acts as the intent to purchase.
+  </Step>
+  <Step title="Process the Payment">
+    Submit the order to `/api/payment-gateway/process` along with the chosen payment `method` (`PIX`, `BOLETO`, or `CREDIT_CARD`). CertoPay returns the payment instrument — a PIX QR Code, Boleto barcode, or card authorization result.
+  </Step>
+  <Step title="Receive Webhook Confirmation">
+    When the payment status changes (e.g., `PENDING` → `PAID`), CertoPay sends an HTTP POST to your registered webhook URL. Always use webhooks to confirm final payment status rather than polling.
+  </Step>
+</Steps>
+
+## Key Concepts
+
+### Amounts Are in Centavos
+
+All monetary values in the CertoPay API are expressed as **integers in centavos** (the smallest unit of the Brazilian Real). This avoids floating-point rounding issues.
+
+```text
+R$ 1,00  →  100
+R$ 29,70 →  2970
+R$ 297,00 → 29700
+```
+
+### API Key Authentication
+
+Every request must include your secret API key in the `X-Api-Key` request header. Keys are prefixed with `sk_live_` for production and should never be exposed in client-side code. See the [Authentication guide](/authentication) for full details.
+
+```http
+X-Api-Key: sk_live_sua_chave_aqui
+```
+
+### Idempotency
+
+Payment processing endpoints accept an optional `Idempotency-Key` header containing a UUID v4. If the same key is sent in two requests, CertoPay returns the result of the first request without processing the payment twice. This is essential for safely retrying requests after network failures.
+
+```http
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001
+```
+
+<Tip>
+  Generate a fresh UUID v4 per payment attempt and store it alongside your order record. If a request times out, retry with the same key — you'll get back the original result with no risk of double charge.
+</Tip>
+
+## Transaction Status Lifecycle
+
+Once a payment is processed, the resulting transaction moves through a well-defined set of statuses. The table below describes every possible state.
+
+| Status | Description |
+| --- | --- |
+| `CREATED` | Transaction created, awaiting processing |
+| `PENDING` | Awaiting payment — PIX QR Code or Boleto has been generated |
+| `AUTHORIZED` | Card authorization approved, awaiting capture |
+| `CAPTURED` | Card capture confirmed — funds reserved |
+| `PAID` | Payment confirmed (PIX or Boleto settled) |
+| `REFUSED` | Payment declined by issuer or anti-fraud |
+| `EXPIRED` | Payment window closed before the buyer completed payment |
+| `FAILED` | An unexpected processing error occurred |
+| `REFUNDED` | Full refund successfully completed |
+| `PARTIAL_REFUND` | Partial refund successfully completed |
+| `CHARGEBACK` | Buyer opened a dispute with their card issuer |
+| `CANCELLED` | Transaction was cancelled before settlement |
+
+<Note>
+  Not every status applies to every payment method. For example, `AUTHORIZED` and `CAPTURED` are credit card–only states, while `PAID` is used for PIX and Boleto confirmations.
+</Note>
+
+## Explore the API
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Make your first PIX payment in under 5 minutes with step-by-step curl examples.
+  </Card>
+
+  <Card title="PIX Payments" icon="bolt" href="/payments/pix">
+    Generate PIX QR Codes, handle expiry, and confirm instant settlements via webhook.
+  </Card>
+
+  <Card title="Boleto Payments" icon="barcode" href="/payments/boleto">
+    Issue boletos with custom due dates and reconcile payments automatically.
+  </Card>
+
+  <Card title="Webhooks" icon="webhook" href="/webhooks/overview">
+    Configure your endpoint, verify signatures, and handle every event type.
+  </Card>
+</CardGroup>

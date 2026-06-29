@@ -1,0 +1,70 @@
+---
+title: "GET /api/webhooks — Retrieve Webhook Configuration"
+sidebarTitle: "Get Webhook"
+description: "GET /api/webhooks — Retrieve your registered CertoPay webhook URL and its current status. Confirm your setup is correct before testing any payment flow."
+---
+
+Use this endpoint to inspect your current webhook configuration. The response includes the URL registered to receive transaction event notifications and its active status. This is useful for verifying that your webhook is correctly set up before testing a payment flow, or for confirming what endpoint is on record after making changes via [POST /api/webhooks/upsert](/api-reference/webhooks/upsert).
+
+## Endpoint
+
+```
+GET https://v2.certopaybrasil.com/api/webhooks
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Example Request
+
+```bash
+curl https://v2.certopaybrasil.com/api/webhooks \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+Returns the webhook configuration object for your account, including the registered URL and its current status.
+
+### 200 — Success
+
+```json
+{
+  "id": "uuid-do-webhook",
+  "url": "https://seusite.com/webhooks/certopay",
+  "status": "ACTIVE",
+  "createdAt": "2026-06-20T08:00:00Z",
+  "updatedAt": "2026-06-26T09:00:00Z"
+}
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier (UUID) for your webhook configuration.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The HTTPS URL currently registered to receive transaction event notifications.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the webhook. `ACTIVE` means notifications are being delivered; `INACTIVE` means the webhook has been disabled.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp for when the webhook was first registered.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp for when the webhook configuration was last modified.
+</ResponseField>
+
+<Note>
+  If no webhook has been registered for your account, this endpoint may return a `404` or an empty response. Use [POST /api/webhooks/upsert](/api-reference/webhooks/upsert) to register a URL and begin receiving notifications.
+</Note>

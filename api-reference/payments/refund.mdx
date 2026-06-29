@@ -1,0 +1,210 @@
+---
+title: "POST /api/payment-gateway/refund — Issue a Refund"
+sidebarTitle: "Refund"
+description: "POST /api/payment-gateway/refund — Issue a full or partial refund for a captured transaction. Partial refunds require the amount field in centavos."
+---
+
+The `/api/payment-gateway/refund` endpoint allows you to reverse a captured transaction either in full or in part. Full refunds return the entire charged amount to the buyer, while partial refunds let you specify an exact amount in centavos — useful for scenarios such as retroactive discounts, cancelled line-items, or pro-rated returns. Refunds can only be issued against transactions in the `CAPTURED` or `PAID` state.
+
+## Base URL
+
+```
+https://v2.certopaybrasil.com/api
+```
+
+## Endpoint
+
+```
+POST /payment-gateway/refund
+```
+
+## Request Headers
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your secret API key. Keep this server-side and never expose it in client-facing code.
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+---
+
+## Request Body & Examples
+
+<Tabs>
+  <Tab title="Full Refund">
+    A full refund reverses the entire original charge amount. Omit the `amount` field entirely — CertoPay will automatically use the total transaction value.
+
+    ### Request Fields
+
+    <ParamField body="transactionId" type="string" required>
+      The unique identifier of the transaction to refund. This is the `transactionId` returned by `POST /api/payment-gateway/process`.
+    </ParamField>
+
+    <ParamField body="reason" type="string">
+      A human-readable explanation for the refund. Stored for audit purposes and visible in your CertoPay dashboard. Example: `"Customer request"`.
+    </ParamField>
+
+    ### Example Request
+
+    ```bash
+    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/refund \
+      -H "X-Api-Key: sk_live_sua_chave_aqui" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "transactionId": "uuid-da-transacao",
+        "reason": "Customer request"
+      }'
+    ```
+
+    ### Response Fields
+
+    <ResponseField name="transactionId" type="string">
+      The identifier of the refunded transaction.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Updated transaction status. A successful full refund sets this to `"REFUNDED"`.
+    </ResponseField>
+
+    <ResponseField name="method" type="string">
+      The original payment method (`"PIX"`, `"BOLETO"`, or `"CARD"`).
+    </ResponseField>
+
+    <ResponseField name="amount" type="integer">
+      The original charged amount in centavos.
+    </ResponseField>
+
+    <ResponseField name="refundedAmount" type="integer">
+      The total amount refunded in centavos. For a full refund this equals `amount`.
+    </ResponseField>
+
+    <ResponseField name="reason" type="string">
+      The reason string provided in the request, if any.
+    </ResponseField>
+
+    <ResponseField name="refundedAt" type="string">
+      ISO 8601 timestamp of when the refund was processed.
+    </ResponseField>
+
+    ### Example Response
+
+    ```json
+    {
+      "transactionId": "uuid-da-transacao",
+      "status": "REFUNDED",
+      "method": "CARD",
+      "amount": 29700,
+      "refundedAmount": 29700,
+      "reason": "Customer request",
+      "refundedAt": "2026-06-26T14:32:00Z"
+    }
+    ```
+  </Tab>
+
+  <Tab title="Partial Refund">
+    A partial refund returns a specific amount — less than the original charge — to the buyer. Include the `amount` field set to the exact centavo value you wish to refund. You may issue multiple partial refunds against the same transaction as long as the cumulative refunded amount does not exceed the original charge.
+
+    ### Request Fields
+
+    <ParamField body="transactionId" type="string" required>
+      The unique identifier of the transaction to partially refund. This is the `transactionId` returned by `POST /api/payment-gateway/process`.
+    </ParamField>
+
+    <ParamField body="amount" type="integer" required>
+      The amount to refund in **centavos**. Must be greater than `0` and less than or equal to the remaining refundable balance on the transaction. Example: `10000` for R$100,00.
+    </ParamField>
+
+    <ParamField body="reason" type="string">
+      A human-readable explanation for the partial refund. Stored for audit purposes and visible in your CertoPay dashboard. Example: `"Discount applied retroactively"`.
+    </ParamField>
+
+    ### Example Request
+
+    ```bash
+    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/refund \
+      -H "X-Api-Key: sk_live_sua_chave_aqui" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "transactionId": "uuid-da-transacao",
+        "amount": 10000,
+        "reason": "Discount applied retroactively"
+      }'
+    ```
+
+    ### Response Fields
+
+    <ResponseField name="transactionId" type="string">
+      The identifier of the partially refunded transaction.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Updated transaction status. A successful partial refund sets this to `"PARTIAL_REFUND"`.
+    </ResponseField>
+
+    <ResponseField name="method" type="string">
+      The original payment method (`"PIX"`, `"BOLETO"`, or `"CARD"`).
+    </ResponseField>
+
+    <ResponseField name="amount" type="integer">
+      The original charged amount in centavos.
+    </ResponseField>
+
+    <ResponseField name="refundedAmount" type="integer">
+      The cumulative total refunded so far in centavos, including this and any prior partial refunds against the same transaction.
+    </ResponseField>
+
+    <ResponseField name="reason" type="string">
+      The reason string provided in the request, if any.
+    </ResponseField>
+
+    <ResponseField name="refundedAt" type="string">
+      ISO 8601 timestamp of when this partial refund was processed.
+    </ResponseField>
+
+    ### Example Response
+
+    ```json
+    {
+      "transactionId": "uuid-da-transacao",
+      "status": "PARTIAL_REFUND",
+      "method": "CARD",
+      "amount": 29700,
+      "refundedAmount": 10000,
+      "reason": "Discount applied retroactively",
+      "refundedAt": "2026-06-26T15:10:00Z"
+    }
+    ```
+
+    <Note>
+      Partial refunds set the transaction status to `PARTIAL_REFUND`; full refunds (or a series of partial refunds that together equal the original amount) set it to `REFUNDED`. Once a transaction reaches `REFUNDED` status no further refunds can be issued against it.
+    </Note>
+  </Tab>
+</Tabs>
+
+---
+
+## Refund Eligibility by Payment Method
+
+| Method | Full Refund | Partial Refund | Notes |
+|---|---|---|---|
+| **CARD** | ✅ | ✅ | Refunds are processed immediately; settlement timeline depends on the buyer's issuing bank (typically 5–10 business days). |
+| **PIX** | ✅ | ✅ | PIX refunds (devoluções) are processed in real time via the Banco Central do Brasil infrastructure. |
+| **BOLETO** | ✅ | ❌ | Boleto refunds require the buyer's bank account details to be provided and are processed manually. Contact CertoPay support for boleto refund instructions. |
+
+---
+
+## Error Responses
+
+| HTTP Status | Meaning |
+|---|---|
+| `400 Bad Request` | A required field is missing or the `amount` exceeds the refundable balance. |
+| `401 Unauthorized` | The `X-Api-Key` header is missing or invalid. |
+| `404 Not Found` | No transaction was found for the provided `transactionId`. |
+| `409 Conflict` | The transaction has already been fully refunded or is in a non-refundable state (e.g. `PENDING`, `DECLINED`). |
+| `500 Internal Server Error` | An unexpected error occurred on CertoPay's side. Retry with exponential back-off. |
+
+<Warning>
+  Refunds can only be issued against transactions in a **captured or paid** state. Attempting to refund a `PENDING`, `DECLINED`, or already `REFUNDED` transaction will return a `409 Conflict` error. Always verify the transaction status via `GET /api/payment-gateway/transaction/{transactionId}` before initiating a refund.
+</Warning>

@@ -1,0 +1,65 @@
+---
+title: "Register or Update a Webhook — POST /api/webhooks/upsert"
+sidebarTitle: "Register Webhook"
+description: "POST /api/webhooks/upsert — Register or update your webhook URL to receive real-time transaction event notifications from CertoPay."
+---
+
+Use this endpoint to register an HTTPS URL that CertoPay will call whenever a transaction event occurs in your account — such as a payment being confirmed, a boleto expiring, or a refund being processed. CertoPay sends a `POST` request with a JSON payload to your URL each time a qualifying event is triggered. If you have already registered a webhook URL, calling this endpoint again will update it with the new value (upsert behavior).
+
+## Endpoint
+
+```
+POST https://v2.certopaybrasil.com/api/webhooks/upsert
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+## Request Body
+
+<ParamField body="url" type="string" required>
+  The fully qualified HTTPS URL of your webhook endpoint. CertoPay will deliver transaction event notifications to this address. Must use the `https://` scheme — plain HTTP URLs are not accepted.
+</ParamField>
+
+## Example Request
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/webhooks/upsert \
+  -H "X-Api-Key: sk_live_sua_chave_aqui" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://seusite.com/webhooks/certopay"}'
+```
+
+## Example Request Body
+
+```json
+{
+  "url": "https://seusite.com/webhooks/certopay"
+}
+```
+
+## Response
+
+### 200 — Success
+
+A successful call returns a confirmation that the webhook URL has been registered or updated.
+
+```json
+{
+  "success": true,
+  "url": "https://seusite.com/webhooks/certopay"
+}
+```
+
+<Note>
+  This endpoint uses upsert behavior — calling it again with a different URL will update your existing webhook registration rather than create a duplicate. There is only ever one active webhook URL per account. To view your currently registered URL, use [GET /api/webhooks](/api-reference/webhooks/get).
+</Note>

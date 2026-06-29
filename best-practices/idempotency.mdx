@@ -1,0 +1,107 @@
+---
+title: "Idempotency Keys: Avoid Duplicate Charges in CertoPay"
+sidebarTitle: "Idempotency"
+description: "Use Idempotency-Key headers to safely retry failed payment requests without charging the buyer twice. Learn the 24-hour key lifecycle and retry strategy."
+---
+
+Network failures and timeouts are a reality of distributed systems. Without a safeguard, retrying a failed payment request could charge your customer twice for the same order. CertoPay's idempotency mechanism solves this: by attaching a unique `Idempotency-Key` header to every payment request, the API guarantees that submitting the same key more than once will return the original result — no matter how many times you retry.
+
+## What Is Idempotency?
+
+An operation is **idempotent** when performing it multiple times produces the same outcome as performing it once. In the context of CertoPay, if you send a `POST /api/payment-gateway/process` request and receive no response (timeout, network drop, 5xx error), you cannot know whether the charge was created or not. Retrying without an `Idempotency-Key` risks a duplicate charge.
+
+When you include an `Idempotency-Key`:
+- The **first** request is processed normally and the result is stored.
+- Any **subsequent** request with the **same key** receives the stored result immediately — the charge is **not processed again**.
+- A **different key** always triggers a brand-new charge attempt.
+
+<Note>
+  Idempotency protection applies specifically to `POST /api/payment-gateway/process`. Always include the header on every call to this endpoint.
+</Note>
+
+## Key Lifecycle: 24-Hour Window
+
+Each `Idempotency-Key` is valid for **24 hours** from the time of the first request that used it.
+
+| Period | Behavior |
+|---|---|
+| Within 24 hours | Same key → returns cached original result |
+| After 24 hours | Key expires; the same UUID can be safely reused for a new charge attempt |
+
+If a charge genuinely failed and 24 hours have passed, you may reuse the original key — or generate a new UUID for clarity. The important rule is: **within a 24-hour window, never reuse a key for a different order or a different amount**.
+
+## How to Generate an Idempotency Key
+
+Use a **UUID v4** — a randomly generated, universally unique identifier. Generate **one key per charge attempt** and store it alongside the order record in your database before making the request.
+
+<CodeGroup>
+
+```javascript Node.js
+import { v4 as uuidv4 } from 'uuid';
+
+const idempotencyKey = uuidv4();
+// e.g. "550e8400-e29b-41d4-a716-446655440001"
+```
+
+```python Python
+import uuid
+
+idempotency_key = str(uuid.uuid4())
+# e.g. "550e8400-e29b-41d4-a716-446655440001"
+```
+
+</CodeGroup>
+
+<Tip>
+  Persist the idempotency key in your database **before** making the API call — not after. If your application crashes mid-flight, you need the key available to retry correctly.
+</Tip>
+
+## Retry Strategy
+
+Follow these steps every time you call `POST /api/payment-gateway/process`:
+
+<Steps>
+  <Step title="Generate a UUID v4 key before the first attempt">
+    Create the key, save it to your database alongside the pending order, then make the request with the `Idempotency-Key` header set.
+  </Step>
+  <Step title="On timeout or 5xx error, retry with the SAME key">
+    A timeout or server error means the outcome is unknown. Retry the identical request body with the **exact same** key. CertoPay will either return the original result (if the first attempt succeeded) or process the charge for the first time (if it did not).
+  </Step>
+  <Step title="For a genuinely new charge, generate a NEW key">
+    If the customer is making a second, separate purchase — or if the previous charge was confirmed as failed and you want to start fresh — generate a brand-new UUID v4. Never reuse a key across different orders or amounts within its 24-hour validity window.
+  </Step>
+</Steps>
+
+## Full Request Example
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/process \
+  -H "X-Api-Key: sk_live_sua_chave" \
+  -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderId": "uuid-pedido",
+    "method": "PIX",
+    "amount": 29700
+  }'
+```
+
+The `Idempotency-Key` header is sent alongside your `X-Api-Key` authentication header. Both are required for every call to the process endpoint.
+
+## Common Mistakes
+
+<Warning>
+  **Never change the request body when retrying with the same key.** If CertoPay detects the same `Idempotency-Key` paired with a different payload, the request will be rejected with an error. The key is bound to the original request data for the duration of its validity window.
+</Warning>
+
+<Warning>
+  **Never reuse a key across different orders.** Generating a single key and sharing it across multiple charge attempts — even for the same customer — defeats the purpose of idempotency and will cause unexpected failures.
+</Warning>
+
+| Scenario | Key to use |
+|---|---|
+| Retry after timeout | **Same** key |
+| Retry after 5xx error | **Same** key |
+| New purchase by the same customer | **New** key |
+| Same purchase, different amount | **New** key |
+| Re-attempting after 24-hour expiry | Same key is safe, or generate a new one |

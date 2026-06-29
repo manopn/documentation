@@ -1,0 +1,404 @@
+---
+title: "POST /api/payment-gateway/process — Process a Payment"
+sidebarTitle: "Process Payment"
+description: "POST /api/payment-gateway/process — Unified endpoint to process PIX, Boleto, and Credit Card payments. Always include an Idempotency-Key header."
+---
+
+The `/api/payment-gateway/process` endpoint is CertoPay's unified payment entry point. A single request shape handles all three supported payment methods — **PIX**, **Boleto**, and **Credit Card** — differing only in the `method` field and method-specific parameters. Because payment charges are non-idempotent by nature, always supply an `Idempotency-Key` header with a unique UUID v4 per charge attempt to prevent duplicate transactions in the event of a network retry.
+
+## Base URL
+
+```
+https://v2.certopaybrasil.com/api
+```
+
+## Endpoint
+
+```
+POST /payment-gateway/process
+```
+
+## Request Headers
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your secret API key. Keep this value server-side and never expose it in client-facing code.
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `application/json`.
+</ParamField>
+
+<ParamField header="Idempotency-Key" type="string">
+  A unique UUID v4 generated per charge attempt. CertoPay uses this key to deduplicate requests — submitting the same key twice returns the original response without creating a second charge.
+
+  **Strongly recommended for all production requests.**
+</ParamField>
+
+## Request Body — Common Fields
+
+The following fields are required for **all** payment methods.
+
+<ParamField body="orderId" type="string" required>
+  Your internal order identifier (UUID recommended). Used to correlate the transaction with your own records.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  The payment method to use. Accepted values: `"PIX"`, `"BOLETO"`, `"CARD"`.
+</ParamField>
+
+<ParamField body="amount" type="integer" required>
+  Charge amount in **centavos** (Brazilian cents). For example, R$297,00 is represented as `29700`.
+</ParamField>
+
+<ParamField body="buyerDoc" type="string" required>
+  The buyer's CPF (Cadastro de Pessoas Físicas), digits only. Example: `"12345678900"`.
+</ParamField>
+
+<ParamField body="buyerCellNumber" type="string" required>
+  The buyer's mobile phone number in Brazilian format. Example: `"(11) 99999-9999"`.
+</ParamField>
+
+<ParamField body="buyerAddress" type="object" required>
+  The buyer's billing address.
+
+  <Expandable title="buyerAddress fields">
+    <ParamField body="postal_code" type="string" required>
+      Brazilian CEP (postal code), digits only. Example: `"01310930"`.
+    </ParamField>
+
+    <ParamField body="street" type="string" required>
+      Street name. Example: `"Avenida Paulista"`.
+    </ParamField>
+
+    <ParamField body="number" type="string" required>
+      Street number. Example: `"100"`.
+    </ParamField>
+
+    <ParamField body="neighborhood" type="string" required>
+      Neighborhood (bairro). Example: `"Bela Vista"`.
+    </ParamField>
+
+    <ParamField body="city" type="string" required>
+      City name. Example: `"São Paulo"`.
+    </ParamField>
+
+    <ParamField body="state" type="string" required>
+      Two-letter state code (UF). Example: `"SP"`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+---
+
+## Method-Specific Request Body & Examples
+
+<Tabs>
+  <Tab title="PIX">
+    PIX is Brazil's instant payment rail. A successful request returns a QR code payload (`emv`) and a hosted QR code image URL that your customer scans to complete payment. PIX transactions have a configurable expiry window.
+
+    ### Additional Fields
+
+    No additional fields are required beyond the common fields above. Set `method` to `"PIX"`.
+
+    ### Example Request
+
+    ```bash
+    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/process \
+      -H "X-Api-Key: sk_live_sua_chave_aqui" \
+      -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "orderId": "uuid-do-pedido",
+        "method": "PIX",
+        "amount": 29700,
+        "buyerDoc": "12345678900",
+        "buyerCellNumber": "(11) 99999-9999",
+        "buyerAddress": {
+          "postal_code": "01310930",
+          "street": "Avenida Paulista",
+          "number": "100",
+          "neighborhood": "Bela Vista",
+          "city": "São Paulo",
+          "state": "SP"
+        }
+      }'
+    ```
+
+    ### Response Fields
+
+    <ResponseField name="transactionId" type="string">
+      Unique identifier for this transaction. Store this value to query status or issue refunds.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Initial transaction status. Will be `"PENDING"` until the PIX payment is confirmed by the buyer.
+    </ResponseField>
+
+    <ResponseField name="method" type="string">
+      Echo of the payment method: `"PIX"`.
+    </ResponseField>
+
+    <ResponseField name="amount" type="integer">
+      Charged amount in centavos.
+    </ResponseField>
+
+    <ResponseField name="pix" type="object">
+      PIX-specific payment details.
+
+      <Expandable title="pix fields">
+        <ResponseField name="pix.emv" type="string">
+          The EMV payload (Pix Copia e Cola string) that your app or checkout page can render as a QR code.
+        </ResponseField>
+
+        <ResponseField name="pix.qrCodeUrl" type="string">
+          Hosted URL to a pre-rendered QR code PNG image. Embed this in your payment confirmation screen.
+        </ResponseField>
+
+        <ResponseField name="pix.expiresAt" type="string">
+          ISO 8601 timestamp indicating when the PIX charge expires. After this time, the `emv` and QR code are no longer valid.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    ### Example Response
+
+    ```json
+    {
+      "transactionId": "uuid-da-transacao",
+      "status": "PENDING",
+      "method": "PIX",
+      "amount": 29700,
+      "pix": {
+        "emv": "00020126580014br.gov.bcb.pix...",
+        "qrCodeUrl": "https://...",
+        "expiresAt": "2026-06-26T11:00:00Z"
+      }
+    }
+    ```
+
+    <Tip>
+      Poll `GET /api/payment-gateway/transaction/{transactionId}` or listen for the `payment.confirmed` webhook event to detect when the PIX payment status transitions from `PENDING` to `PAID`.
+    </Tip>
+  </Tab>
+
+  <Tab title="Boleto">
+    Boleto Bancário is a widely used Brazilian payment slip that customers can pay at banks, ATMs, lottery kiosks, or via internet banking. A successful request returns a scannable barcode and a PDF download link. Boleto payments have a due date after which the slip expires.
+
+    ### Additional Fields
+
+    No additional fields are required beyond the common fields above. Set `method` to `"BOLETO"`.
+
+    ### Example Request
+
+    ```bash
+    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/process \
+      -H "X-Api-Key: sk_live_sua_chave_aqui" \
+      -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440002" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "orderId": "uuid-do-pedido",
+        "method": "BOLETO",
+        "amount": 29700,
+        "buyerDoc": "12345678900",
+        "buyerCellNumber": "(11) 99999-9999",
+        "buyerAddress": {
+          "postal_code": "01310930",
+          "street": "Avenida Paulista",
+          "number": "100",
+          "neighborhood": "Bela Vista",
+          "city": "São Paulo",
+          "state": "SP"
+        }
+      }'
+    ```
+
+    ### Response Fields
+
+    <ResponseField name="transactionId" type="string">
+      Unique identifier for this transaction. Store this value to query status or issue refunds.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Initial transaction status. Will be `"PENDING"` until payment is confirmed by the banking network.
+    </ResponseField>
+
+    <ResponseField name="method" type="string">
+      Echo of the payment method: `"BOLETO"`.
+    </ResponseField>
+
+    <ResponseField name="amount" type="integer">
+      Charged amount in centavos.
+    </ResponseField>
+
+    <ResponseField name="boleto" type="object">
+      Boleto-specific payment details.
+
+      <Expandable title="boleto fields">
+        <ResponseField name="boleto.barcode" type="string">
+          The formatted barcode string that can be displayed on a payment confirmation page or printed on the boleto slip.
+        </ResponseField>
+
+        <ResponseField name="boleto.digitableLine" type="string">
+          The numeric digitable line (linha digitável) used for manual entry during payment. This is the string customers type in if their scanner cannot read the barcode.
+        </ResponseField>
+
+        <ResponseField name="boleto.pdfUrl" type="string">
+          Hosted URL to a ready-to-print boleto PDF. Redirect your customer here or embed it in a download link.
+        </ResponseField>
+
+        <ResponseField name="boleto.dueDate" type="string">
+          ISO 8601 timestamp for the boleto's due date. After this date the slip can no longer be paid and a new boleto must be issued.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    ### Example Response
+
+    ```json
+    {
+      "transactionId": "uuid-da-transacao",
+      "status": "PENDING",
+      "method": "BOLETO",
+      "amount": 29700,
+      "boleto": {
+        "barcode": "34191.09008 61207.727308 71140.421477 1 10010002970000",
+        "digitableLine": "34191090086120772730871140421477101001000297000",
+        "pdfUrl": "https://...",
+        "dueDate": "2026-07-03T23:59:59Z"
+      }
+    }
+    ```
+
+    <Warning>
+      Boleto confirmation typically takes **1–3 business days** to be reflected in the transaction status. Do not fulfill orders based solely on the `PENDING` status — wait for the `payment.confirmed` webhook or poll the transaction endpoint.
+    </Warning>
+  </Tab>
+
+  <Tab title="Credit Card">
+    Credit card payments are processed synchronously. A successful charge returns `status: "CAPTURED"` immediately. You may pass raw card data directly in the request or substitute a `cardToken` obtained from the [Tokenize Card](/api-reference/payments/tokenize-card) endpoint to avoid handling raw PAN data on your server.
+
+    ### Additional Fields
+
+    <ParamField body="installments" type="integer">
+      Number of installments (parcelas). Use `1` for a single full charge. Maximum installments vary by card brand and acquirer configuration.
+    </ParamField>
+
+    <ParamField body="cardHolderName" type="string">
+      Full name exactly as it appears on the card, in uppercase. Example: `"JOAO DA SILVA"`. Required unless using `cardToken`.
+    </ParamField>
+
+    <ParamField body="cardNumber" type="string">
+      16-digit card number, digits only. Example: `"4111111111111111"`. Required unless using `cardToken`.
+    </ParamField>
+
+    <ParamField body="cardExpirationMonth" type="string">
+      Two-digit expiration month. Example: `"12"`. Required unless using `cardToken`.
+    </ParamField>
+
+    <ParamField body="cardExpirationYear" type="string">
+      Two-digit expiration year. Example: `"28"` for 2028. Required unless using `cardToken`.
+    </ParamField>
+
+    <ParamField body="cardSecurityCode" type="string">
+      Card CVV/CVC security code. Example: `"123"`. Required unless using `cardToken`.
+    </ParamField>
+
+    <ParamField body="cardBrand" type="string">
+      Card network brand. Accepted values: `"Visa"`, `"Mastercard"`, `"Elo"`. Required unless using `cardToken`.
+    </ParamField>
+
+    <ParamField body="cardToken" type="string">
+      A token returned by `POST /api/payment-gateway/tokenize-card`. When provided, all raw `card*` fields above are ignored. Use this to charge returning customers without re-collecting card data.
+    </ParamField>
+
+    <ParamField body="buyerBirthdate" type="string">
+      The buyer's date of birth in `YYYY-MM-DD` format. Required for anti-fraud checks. Example: `"1990-05-20"`.
+    </ParamField>
+
+    ### Example Request
+
+    ```bash
+    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/process \
+      -H "X-Api-Key: sk_live_sua_chave_aqui" \
+      -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440003" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "orderId": "uuid-do-pedido",
+        "method": "CARD",
+        "amount": 29700,
+        "installments": 3,
+        "cardHolderName": "JOAO DA SILVA",
+        "cardNumber": "4111111111111111",
+        "cardExpirationMonth": "12",
+        "cardExpirationYear": "28",
+        "cardSecurityCode": "123",
+        "cardBrand": "Visa",
+        "buyerDoc": "12345678900",
+        "buyerBirthdate": "1990-05-20",
+        "buyerCellNumber": "(11) 99999-9999",
+        "buyerAddress": {
+          "postal_code": "01310930",
+          "street": "Avenida Paulista",
+          "number": "100",
+          "neighborhood": "Bela Vista",
+          "city": "São Paulo",
+          "state": "SP"
+        }
+      }'
+    ```
+
+    ### Response Fields
+
+    <ResponseField name="transactionId" type="string">
+      Unique identifier for this transaction. Store this value to issue refunds or query status.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Transaction outcome. `"CAPTURED"` means the charge was successful and funds are reserved. Other possible values include `"DECLINED"` and `"ERROR"`.
+    </ResponseField>
+
+    <ResponseField name="method" type="string">
+      Echo of the payment method: `"CARD"`.
+    </ResponseField>
+
+    <ResponseField name="amount" type="integer">
+      Total charged amount in centavos.
+    </ResponseField>
+
+    <ResponseField name="installments" type="integer">
+      Number of installments the charge was split into.
+    </ResponseField>
+
+    ### Example Response
+
+    ```json
+    {
+      "transactionId": "uuid-da-transacao",
+      "status": "CAPTURED",
+      "method": "CARD",
+      "amount": 29700,
+      "installments": 3
+    }
+    ```
+
+    <Tip>
+      To charge a returning customer without asking for card details again, first call [`POST /api/payment-gateway/tokenize-card`](/api-reference/payments/tokenize-card) to save the card, then pass the returned `cardToken` in place of all `card*` fields.
+    </Tip>
+  </Tab>
+</Tabs>
+
+---
+
+## Error Responses
+
+| HTTP Status | Meaning |
+|---|---|
+| `400 Bad Request` | Missing or invalid field. Check the `errors` array in the response body for field-level details. |
+| `401 Unauthorized` | The `X-Api-Key` header is missing or invalid. |
+| `409 Conflict` | A transaction with the same `Idempotency-Key` was already processed. The original response is returned. |
+| `422 Unprocessable Entity` | The request was well-formed but the charge was declined by the acquirer. |
+| `500 Internal Server Error` | An unexpected error occurred on CertoPay's side. Retry with exponential back-off. |
+
+<Warning>
+  Never log or store raw card numbers (`cardNumber`, `cardSecurityCode`) in your application logs or database. Use the [Tokenize Card](/api-reference/payments/tokenize-card) endpoint to handle repeat customers securely.
+</Warning>

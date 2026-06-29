@@ -1,0 +1,204 @@
+---
+title: "Boleto Payments with CertoPay: Barcodes and PDF Slips"
+sidebarTitle: "Boleto"
+description: "Issue Boleto banking slips through CertoPay. Get the barcode, digitableLine, and a PDF link. Payment confirmed via webhook within 1-3 business days."
+---
+
+Boleto Bancário is a traditional Brazilian payment instrument that allows customers to pay at any bank branch, Lotérica lottery outlet, or via internet banking — no credit card or PIX key required. When a buyer selects Boleto at checkout, CertoPay generates a slip instantly and returns a barcode, a digitable line (linha digitável) for copy-paste entry, and a PDF link the buyer can download and print. Confirmation arrives via webhook within one to three business days after the buyer settles the slip.
+
+## How It Works
+
+<Steps>
+  <Step title="Create the Boleto charge">
+    Your server calls `POST /api/payment-gateway/process` with `"method": "BOLETO"`. CertoPay registers the charge and issues the banking slip immediately.
+  </Step>
+  <Step title="Display the slip to the buyer">
+    Show `boleto.digitableLine` as a copy-paste field for internet banking entry, and link to `boleto.pdfUrl` so the buyer can download and print the physical slip. Always display the due date (`boleto.dueDate`).
+  </Step>
+  <Step title="Buyer pays at a bank, Lotérica, or internet banking">
+    The buyer can pay at any physical or digital channel that accepts Boleto. Payment is processed by the banking network and may take up to one business day to clear.
+  </Step>
+  <Step title="Receive the confirmation webhook">
+    One to three business days after payment, CertoPay sends a `transaction.paid` event to your webhook URL. Verify with `GET /api/transactions/{id}` and fulfill the order.
+  </Step>
+</Steps>
+
+<Warning>
+  Boleto has a fixed due date. A slip that is not paid by `boleto.dueDate` is considered expired and **cannot be paid**. If the buyer misses the deadline, you must create a new charge with a fresh `Idempotency-Key`.
+</Warning>
+
+## Request
+
+```http
+POST /api/payment-gateway/process
+X-Api-Key: sk_live_sua_chave_aqui
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440002
+Content-Type: application/json
+
+{
+  "orderId": "uuid-do-pedido",
+  "method": "BOLETO",
+  "amount": 29700,
+  "buyerDoc": "12345678900",
+  "buyerCellNumber": "(11) 99999-9999",
+  "buyerAddress": {
+    "postal_code": "01310930",
+    "street": "Avenida Paulista",
+    "number": "100",
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP"
+  }
+}
+```
+
+### Request Fields
+
+<ParamField body="orderId" type="string" required>
+  The unique identifier for the order, obtained from `POST /api/orders`. This links the payment transaction back to the originating order in your system.
+</ParamField>
+
+<ParamField body="method" type="string" required>
+  Must be `"BOLETO"` to issue a banking slip.
+</ParamField>
+
+<ParamField body="amount" type="integer" required>
+  The charge amount in **centavos**. For example, R$ 297,00 → `29700`. Must be a positive integer with no decimal places.
+</ParamField>
+
+<ParamField body="buyerDoc" type="string" required>
+  The buyer's CPF — exactly 11 numeric digits, no punctuation. Example: `"12345678900"`.
+</ParamField>
+
+<ParamField body="buyerCellNumber" type="string" required>
+  The buyer's mobile phone number, including the area code (DDD). Example: `"(11) 99999-9999"`.
+</ParamField>
+
+<ParamField body="buyerAddress" type="object" required>
+  The buyer's billing address. All sub-fields below are required and are printed on the Boleto slip.
+
+  <Expandable title="buyerAddress fields">
+    <ParamField body="postal_code" type="string" required>
+      Brazilian postal code (CEP), 8 digits. Example: `"01310930"`.
+    </ParamField>
+    <ParamField body="street" type="string" required>
+      Street name. Example: `"Avenida Paulista"`.
+    </ParamField>
+    <ParamField body="number" type="string" required>
+      Street number. Example: `"100"`.
+    </ParamField>
+    <ParamField body="neighborhood" type="string" required>
+      Neighborhood (bairro). Example: `"Bela Vista"`.
+    </ParamField>
+    <ParamField body="city" type="string" required>
+      City name. Example: `"São Paulo"`.
+    </ParamField>
+    <ParamField body="state" type="string" required>
+      Two-letter state abbreviation (UF). Example: `"SP"`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+A successful request returns HTTP `200` with the following body:
+
+```json
+{
+  "transactionId": "uuid-da-transacao",
+  "status": "PENDING",
+  "method": "BOLETO",
+  "amount": 29700,
+  "boleto": {
+    "barcode": "34191.09008 61207.727308 71140.421477 1 10010002970000",
+    "digitableLine": "34191090086120772730871140421477101001000297000",
+    "pdfUrl": "https://...",
+    "dueDate": "2026-07-03T23:59:59Z"
+  }
+}
+```
+
+### Response Fields
+
+<ResponseField name="transactionId" type="string">
+  CertoPay's unique identifier for this transaction. Store this to query the transaction status later with `GET /api/transactions/{id}`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Initial status is always `PENDING` for Boleto charges. Transitions to `PAID` once the banking network confirms payment.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Echoes back the payment method — `"BOLETO"`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  The charge amount in centavos, as submitted.
+</ResponseField>
+
+<ResponseField name="boleto.barcode" type="string">
+  The human-readable barcode representation. This is typically displayed under the barcode image in the slip PDF.
+</ResponseField>
+
+<ResponseField name="boleto.digitableLine" type="string">
+  The digitable line (linha digitável) — a numeric string the buyer types into their internet banking portal to pay without scanning a physical barcode. Display this with a copy button.
+</ResponseField>
+
+<ResponseField name="boleto.pdfUrl" type="string">
+  A URL to the Boleto PDF. Link to this so the buyer can download and print the slip, or share it via WhatsApp/email.
+</ResponseField>
+
+<ResponseField name="boleto.dueDate" type="string">
+  ISO 8601 timestamp for the payment deadline. Boletos cannot be paid after this date.
+</ResponseField>
+
+## Displaying the Boleto to the Buyer
+
+Give the buyer all three ways to access their slip:
+
+```jsx
+// Example: digitable line + PDF download link
+<p>Vencimento: {new Date(boleto.dueDate).toLocaleDateString('pt-BR')}</p>
+
+<input readOnly value={boleto.digitableLine} />
+<button onClick={() => navigator.clipboard.writeText(boleto.digitableLine)}>
+  Copiar linha digitável
+</button>
+
+<a href={boleto.pdfUrl} target="_blank" rel="noopener noreferrer">
+  Baixar Boleto PDF
+</a>
+```
+
+<Note>
+  **Always show `boleto.dueDate` prominently.** Buyers who miss the payment deadline cannot pay the expired slip — they must return to checkout so you can issue a new one. Consider sending an email reminder one day before expiry.
+</Note>
+
+## Confirming Payment
+
+One to three business days after the buyer pays, CertoPay sends a `transaction.paid` webhook event:
+
+```json
+{
+  "event": "transaction.paid",
+  "transactionId": "uuid-da-transacao",
+  "status": "PAID",
+  "method": "BOLETO",
+  "amount": 29700
+}
+```
+
+<Note>
+  **Always verify webhook events server-side.** Before granting access or fulfilling an order, confirm the transaction status by calling:
+
+  ```http
+  GET /api/transactions/{transactionId}
+  X-Api-Key: sk_live_sua_chave_aqui
+  ```
+
+  Only proceed when the response returns `"status": "PAID"`.
+</Note>
+
+<Warning>
+  Do not fulfill digital goods or grant account access immediately after issuing a Boleto — the slip has not been paid yet. Hold fulfillment until the `transaction.paid` webhook is received and verified.
+</Warning>

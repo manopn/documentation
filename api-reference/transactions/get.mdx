@@ -1,0 +1,86 @@
+---
+title: "GET /api/transactions/{transactionId} — Get Transaction"
+sidebarTitle: "Get Transaction"
+description: "GET /api/transactions/{transactionId} — Fetch a single transaction by ID. Confirm payment status before fulfilling orders or granting access."
+---
+
+Use this endpoint to fetch the details of a specific transaction by its unique identifier. This is particularly important in post-payment flows — for example, after receiving a webhook notification, you should always retrieve the transaction directly from the API to confirm its status before fulfilling an order or granting access to a product.
+
+## Endpoint
+
+```
+GET https://v2.certopaybrasil.com/api/transactions/{transactionId}
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="transactionId" type="string" required>
+  The unique UUID of the transaction you want to retrieve. You can obtain this from the [List Transactions](/api-reference/transactions/list) endpoint or from a webhook payload.
+</ParamField>
+
+## Example Request
+
+```bash
+curl https://v2.certopaybrasil.com/api/transactions/uuid-da-transacao \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+Returns a single transaction object corresponding to the provided ID.
+
+### 200 — Success
+
+```json
+{
+  "id": "uuid-da-transacao",
+  "orderId": "uuid-do-pedido",
+  "method": "PIX",
+  "amount": 29700,
+  "status": "PAID",
+  "createdAt": "2026-06-26T10:00:00Z",
+  "updatedAt": "2026-06-26T10:05:00Z"
+}
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier (UUID) for this transaction.
+</ResponseField>
+
+<ResponseField name="orderId" type="string">
+  UUID of the order associated with this transaction.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Payment method used. Possible values: `PIX`, `BOLETO`, `CARD`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  Transaction amount in centavos (e.g. `29700` = R$ 297,00).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the transaction (e.g. `PAID`, `PENDING`, `FAILED`, `REFUNDED`).
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp for when the transaction was created.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp for when the transaction record was last updated.
+</ResponseField>
+
+<Tip>
+  Always call this endpoint after receiving a `transaction.paid` webhook to verify the status before granting access. Never rely solely on the webhook payload to make access decisions — always confirm the current state directly from the API.
+</Tip>

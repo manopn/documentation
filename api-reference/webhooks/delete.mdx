@@ -1,0 +1,45 @@
+---
+title: "Disable a Registered Webhook — DELETE /api/webhooks"
+sidebarTitle: "Disable Webhook"
+description: "DELETE /api/webhooks — Deactivate your CertoPay webhook endpoint. You will stop receiving transaction event notifications until a new URL is registered."
+---
+
+Use this endpoint to deactivate your currently registered webhook. Once deleted, CertoPay will stop delivering transaction event notifications to your endpoint immediately. This is useful when you need to rotate your webhook URL, temporarily pause event delivery during maintenance, or decommission a webhook receiver that is no longer in use.
+
+## Endpoint
+
+```
+DELETE https://v2.certopaybrasil.com/api/webhooks
+```
+
+## Authentication
+
+All requests must include your secret API key in the `X-Api-Key` header.
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
+</ParamField>
+
+## Example Request
+
+```bash
+curl -X DELETE https://v2.certopaybrasil.com/api/webhooks \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+## Response
+
+### 200 — Success
+
+A successful call confirms that the webhook has been deactivated.
+
+```json
+{
+  "success": true,
+  "message": "Webhook successfully deleted."
+}
+```
+
+<Warning>
+  After deleting your webhook, you will **stop receiving all transaction event notifications** — including critical events like `transaction.paid` and `transaction.failed`. Any events that occur while your webhook is inactive will not be re-delivered automatically. To resume receiving notifications, re-register a URL using [POST /api/webhooks/upsert](/api-reference/webhooks/upsert).
+</Warning>

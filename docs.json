@@ -1,0 +1,108 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "CertoPay",
+  "theme": "luma",
+  "colors": {
+    "primary": "#22C55E",
+    "light": "#DCFCE7",
+    "dark": "#15803D"
+  },
+  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://v2.certopaybrasil.com"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Docs",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "payments/overview",
+              "payments/pix",
+              "payments/boleto",
+              "payments/credit-card"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/events"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "pages": [
+              "best-practices/idempotency",
+              "best-practices/security",
+              "errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Customers",
+            "pages": [
+              "api-reference/customers/create",
+              "api-reference/customers/list",
+              "api-reference/customers/get",
+              "api-reference/customers/update",
+              "api-reference/customers/delete"
+            ]
+          },
+          {
+            "group": "Orders",
+            "pages": [
+              "api-reference/orders/create",
+              "api-reference/orders/list",
+              "api-reference/orders/get"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/process",
+              "api-reference/payments/tokenize-card",
+              "api-reference/payments/refund"
+            ]
+          },
+          {
+            "group": "Transactions",
+            "pages": [
+              "api-reference/transactions/list",
+              "api-reference/transactions/get",
+              "api-reference/transactions/events"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/upsert",
+              "api-reference/webhooks/get",
+              "api-reference/webhooks/delete",
+              "api-reference/webhooks/deliveries",
+              "api-reference/webhooks/retry"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

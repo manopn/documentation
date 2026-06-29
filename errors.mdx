@@ -1,0 +1,124 @@
+---
+title: "CertoPay API Error Codes and Integration Troubleshooting"
+sidebarTitle: "Errors"
+description: "Reference for CertoPay API error codes and HTTP status codes. Learn what each error means and how to resolve the most common integration issues."
+---
+
+When something goes wrong, CertoPay returns a structured JSON error response along with the appropriate HTTP status code. This page is your reference for what each status code and error message means, and what action to take to resolve it.
+
+## Error Response Format
+
+Every error response from the CertoPay API follows the same JSON structure:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Descrição do erro",
+  "error": "Bad Request"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `statusCode` | `number` | The HTTP status code of the error |
+| `message` | `string` | A human-readable description of what went wrong |
+| `error` | `string` | The standard HTTP status phrase for the code |
+
+Use the `message` field for debugging and logging. Do not display it directly to end users without sanitization.
+
+---
+
+## HTTP Status Code Reference
+
+The table below lists every HTTP status code you may encounter and the recommended action for each.
+
+| Status | Meaning | How to Fix |
+|---|---|---|
+| `400` | Invalid payload or missing parameter | Check the required fields in the request body against the endpoint's documentation. Look at the `message` field for the specific field that failed validation. |
+| `401` | Missing or invalid API Key / JWT | Verify that the `X-Api-Key` header is present in the request and that the key value is correct. Ensure you are using the right key for the environment (test vs. production). |
+| `403` | Insufficient permissions | Confirm that the API Key being used has the necessary permissions for the resource or action you are attempting. |
+| `404` | Resource not found | Double-check the ID value in the URL path. Ensure the resource exists and belongs to the same account as the API Key. |
+| `429` | Rate limit exceeded | Your integration is sending more than 100 requests per minute. Slow down requests and implement exponential backoff. See [Security & Rate Limits](/best-practices/security#rate-limits). |
+| `500` | Internal server error | An unexpected error occurred on CertoPay's side. Retry the request after a short delay. If the error persists, contact support with the request details. |
+
+---
+
+## Common Integration Errors
+
+The errors below account for the majority of integration issues reported during development and go-live. Expand each one for a description and resolution steps.
+
+<AccordionGroup>
+
+  <Accordion title='"buyerDoc is required"'>
+    **What it means:** The payment method you selected (PIX or Boleto) requires the buyer's CPF or CNPJ to generate the charge. The `buyerDoc` field was missing from the request body.
+
+    **How to fix:** Add the `buyerDoc` field to your `POST /api/payment-gateway/process` request body, populated with the buyer's CPF (11 digits) or CNPJ (14 digits):
+
+    ```json
+    {
+      "orderId": "uuid-pedido",
+      "method": "PIX",
+      "amount": 29700,
+      "buyerDoc": "12345678901"
+    }
+    ```
+
+    <Note>
+      `buyerDoc` is required for PIX and Boleto. It is not required for credit card payments where the card data itself identifies the payer.
+    </Note>
+  </Accordion>
+
+  <Accordion title='"orderId not found"'>
+    **What it means:** The `orderId` value in your request does not match any order record in CertoPay, or the order exists but belongs to a different account than the API Key you are using.
+
+    **How to fix:**
+    - Verify that the `orderId` was correctly saved and is being read from the right database record.
+    - Confirm you are using the correct API Key for the environment where the order was created (test vs. production).
+    - If you are looking up an existing order, ensure it has not been deleted or expired.
+  </Accordion>
+
+  <Accordion title='"Idempotency key already used with different payload"'>
+    **What it means:** You sent a request with an `Idempotency-Key` that was already used in a previous request within the last 24 hours, but the request body does not match the original. CertoPay rejects this to prevent ambiguous or conflicting charge attempts.
+
+    **How to fix:** Generate a fresh UUID v4 and use it as the `Idempotency-Key` for this request. If you intended to retry the original charge, restore the original request body exactly as it was sent the first time.
+
+    ```javascript
+    import { v4 as uuidv4 } from 'uuid';
+    const newKey = uuidv4(); // generate a brand-new key
+    ```
+
+    See [Idempotency](/best-practices/idempotency) for the full retry strategy.
+  </Accordion>
+
+  <Accordion title="Transaction stays in PENDING status">
+    **What it means:** For PIX and Boleto payments, a `PENDING` status is **expected and normal**. These payment methods require the buyer to take a separate action — scanning the QR code or paying the boleto slip — before the transaction is confirmed. The status will remain `PENDING` until the buyer completes payment.
+
+    **How to fix:** Do not poll the transaction status on a tight loop. Instead:
+    1. Present the PIX QR code or Boleto barcode to the buyer.
+    2. Listen for the `transaction.paid` webhook event on your endpoint.
+    3. When the webhook arrives, verify the status via `GET /api/transactions/{transactionId}` and fulfill the order when `status` is `PAID`.
+
+    <Note>
+      PIX payments typically confirm within seconds. Boleto payments can take up to **3 business days** to confirm after the buyer pays at a bank or payment terminal.
+    </Note>
+  </Accordion>
+
+  <Accordion title="HTTP 429 on POST /api/payment-gateway/process">
+    **What it means:** Your integration has exceeded the default rate limit of 100 requests per minute for your API Key. All further requests are being rejected until the rate limit window resets.
+
+    **How to fix:**
+    - Add a delay between payment requests if you are processing them in a loop or batch.
+    - Implement exponential backoff so your code waits progressively longer after each `429` response before retrying.
+    - Review your integration for unintentional duplicate calls — for example, a retry loop that doesn't respect the idempotency key lifecycle.
+    - If your legitimate throughput needs exceed 100 req/min, contact CertoPay support to request a higher limit for your account.
+
+    See [Rate Limits](/best-practices/security#rate-limits) for an exponential backoff code example.
+  </Accordion>
+
+</AccordionGroup>
+
+---
+
+<Tip>
+  If you encounter an error not listed here, or if a `500` error persists after retrying, contact CertoPay support with the full request details: endpoint, request body (redact sensitive data), response body, and timestamp. This information helps the support team diagnose the issue quickly.
+</Tip>

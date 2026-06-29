@@ -1,0 +1,60 @@
+---
+title: "Retrieve an Order by UUID — GET /api/orders/{id}"
+sidebarTitle: "Get Order"
+description: "GET /api/orders/{id} — Fetch a single order by UUID. Returns the order details including customer ID, amount, status, and creation date."
+---
+
+Use this endpoint to fetch the complete details of a single order by its UUID. This is the primary way to check whether a specific charge has been paid, is still pending, or has been cancelled or expired. It is also useful when you need to confirm an order's amount or linked customer before initiating a payment flow. Pass the order UUID in the URL path where `{id}` appears.
+
+## Request
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  The UUID of the order to retrieve. This is the `id` returned when the order was created via `POST /api/orders`.
+</ParamField>
+
+This endpoint accepts no request body.
+
+## Response
+
+A successful request returns **HTTP 200 OK** with the full order object.
+
+<ResponseField name="id" type="string">
+  Unique UUID identifying the order.
+</ResponseField>
+
+<ResponseField name="customerId" type="string">
+  UUID of the customer linked to this order.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  Charge amount in centavos (e.g. `29700` = R$ 297,00).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current payment status of the order. Possible values: `"PENDING"`, `"PAID"`, `"CANCELLED"`, `"EXPIRED"`.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the order was created.
+</ResponseField>
+
+## Example
+
+```bash
+curl https://v2.certopaybrasil.com/api/orders/uuid-do-pedido \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+```json 200 OK
+{
+  "id": "uuid-do-pedido",
+  "customerId": "uuid-do-customer",
+  "amount": 29700,
+  "status": "PENDING",
+  "createdAt": "2026-06-26T10:00:00Z"
+}
+```

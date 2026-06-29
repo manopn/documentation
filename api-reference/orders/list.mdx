@@ -1,0 +1,65 @@
+---
+title: "List All Orders — GET /api/orders Full Reference"
+sidebarTitle: "List Orders"
+description: "GET /api/orders — Retrieve all orders in your CertoPay account. Returns an array of order objects including status, amount, and customer ID."
+---
+
+Use this endpoint to retrieve every order registered under your CertoPay account. The response is an array of order objects, each showing the linked customer, the charge amount in centavos, the current payment status, and the creation timestamp. This is useful for building reporting dashboards, monitoring pending charges, or reconciling payments against your own order management system.
+
+## Request
+
+<ParamField header="X-Api-Key" type="string" required>
+  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
+</ParamField>
+
+This endpoint accepts no request body or query parameters.
+
+## Response
+
+A successful request returns **HTTP 200 OK** with an array of order objects. Each object in the array has the following shape:
+
+<ResponseField name="id" type="string">
+  Unique UUID identifying the order.
+</ResponseField>
+
+<ResponseField name="customerId" type="string">
+  UUID of the customer linked to this order.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  Charge amount in centavos (e.g. `29700` = R$ 297,00).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current payment status of the order. Possible values: `"PENDING"`, `"PAID"`, `"CANCELLED"`, `"EXPIRED"`.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the order was created.
+</ResponseField>
+
+## Example
+
+```bash
+curl https://v2.certopaybrasil.com/api/orders \
+  -H "X-Api-Key: sk_live_sua_chave_aqui"
+```
+
+```json 200 OK
+[
+  {
+    "id": "uuid-do-pedido",
+    "customerId": "uuid-do-customer",
+    "amount": 29700,
+    "status": "PAID",
+    "createdAt": "2026-06-26T10:00:00Z"
+  },
+  {
+    "id": "uuid-do-pedido-2",
+    "customerId": "uuid-do-customer-2",
+    "amount": 15000,
+    "status": "PENDING",
+    "createdAt": "2026-06-25T14:45:00Z"
+  }
+]
+```

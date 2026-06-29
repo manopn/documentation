@@ -1,0 +1,101 @@
+---
+title: "CertoPay Payment Methods: PIX, Boleto, and Credit Card"
+sidebarTitle: "Overview"
+description: "CertoPay supports PIX, Boleto, and Credit Card payments through a single unified endpoint. Learn when to use each method and how they differ."
+---
+
+CertoPay gives you a single, unified integration point for the three most widely used payment methods in Brazil — PIX, Boleto, and Credit Card. Whether your customer wants to pay instantly via PIX, print a banking slip, or split a purchase across installments, your backend calls the same endpoint and simply varies the `method` field. This architecture means you ship one integration and support the full Brazilian payments landscape from day one.
+
+## Single Endpoint, Multiple Methods
+
+All payment processing flows through one endpoint regardless of the payment method chosen:
+
+```http
+POST /api/payment-gateway/process
+```
+
+The `method` field in the request body determines which payment rail is used. Everything else — authentication, idempotency, error handling — works identically across all three methods.
+
+<Note>
+  All monetary amounts must be expressed in **centavos** (smallest Brazilian currency unit). For example, R$ 297,00 is submitted as `29700`. Never send decimal values.
+</Note>
+
+## Authentication & Idempotency
+
+Every request to `/api/payment-gateway/process` requires two headers:
+
+| Header | Description |
+|---|---|
+| `X-Api-Key` | Your secret API key. Keep this server-side — never expose it in client code. |
+| `Idempotency-Key` | A UUID v4 you generate per payment attempt. Re-sending the same key within 24 hours returns the original response without creating a duplicate charge. |
+
+```http
+X-Api-Key: sk_live_sua_chave_aqui
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+```
+
+<Warning>
+  Always generate a **fresh UUID v4** for each new payment attempt. Reusing an `Idempotency-Key` from a previous transaction is safe for retries of the *same* payment, but using it for a different order will silently return the original transaction data instead of creating a new one.
+</Warning>
+
+## Payment Method Comparison
+
+Use this table to decide which method best fits your checkout flow:
+
+| Method | Response time | Confirmation | Supports installments |
+|---|---|---|---|
+| **PIX** | Instant | Webhook `transaction.paid` | No |
+| **Boleto** | Immediate (slip issued) | 1–3 business days via webhook | No |
+| **Credit Card** | Immediate | `CAPTURED` status in response | Yes (up to 12×) |
+
+- **PIX** is the best default for digital goods and time-sensitive orders. Funds are confirmed in seconds, 24 hours a day, 7 days a week.
+- **Boleto** suits customers without a credit card or those who prefer offline payment. Expect a confirmation lag of one to three business days.
+- **Credit Card** supports installments (`installments` field, up to 12×) and card tokenization for subscriptions and repeat customers.
+
+## Payment Lifecycle
+
+Each payment method follows a distinct status progression. Understanding the lifecycle helps you decide when to grant access or fulfill an order.
+
+<Tabs>
+  <Tab title="PIX & Boleto">
+    PIX and Boleto share the same two-state lifecycle:
+
+    ```
+    PENDING ──────────────────────► PAID
+       │                             │
+    Slip/QR issued           Webhook received:
+    awaiting payment         transaction.paid
+    ```
+
+    - The transaction is created with `status: PENDING`.
+    - When the buyer completes payment, CertoPay fires a `transaction.paid` webhook event.
+    - Always verify the final state with `GET /api/transactions/{id}` before fulfilling the order.
+  </Tab>
+  <Tab title="Credit Card">
+    Credit Card payments go through an authorization-then-capture flow:
+
+    ```
+    AUTHORIZED ──────────────────► CAPTURED
+         │                            │
+    Funds reserved              Charge settled
+    on card                     (default: immediate)
+    ```
+
+    - A successful charge returns `status: CAPTURED` immediately when auto-capture is enabled (default).
+    - A `status: REFUSED` response means the issuer declined the card — prompt the buyer to try a different card.
+  </Tab>
+</Tabs>
+
+## Choose a Payment Method
+
+<CardGroup cols={3}>
+  <Card title="PIX" icon="bolt" href="/payments/pix">
+    Instant payments via QR Code or copy-paste EMV code. Best for digital products and fast checkout flows.
+  </Card>
+  <Card title="Boleto" icon="barcode" href="/payments/boleto">
+    Banking slips payable at any bank, Lotérica, or internet banking. Confirmed within 1–3 business days.
+  </Card>
+  <Card title="Credit Card" icon="credit-card" href="/payments/credit-card">
+    Visa, Mastercard, and Elo with up to 12× installments. Supports tokenization for recurring billing.
+  </Card>
+</CardGroup>
