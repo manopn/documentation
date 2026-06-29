@@ -1,101 +1,90 @@
----
-title: "CertoPay Payment Methods: PIX, Boleto, and Credit Card"
-sidebarTitle: "Overview"
-description: "CertoPay supports PIX, Boleto, and Credit Card payments through a single unified endpoint. Learn when to use each method and how they differ."
----
+# Métodos de Pagamento CertoPay: PIX, Boleto e Cartão de Crédito
 
-CertoPay gives you a single, unified integration point for the three most widely used payment methods in Brazil — PIX, Boleto, and Credit Card. Whether your customer wants to pay instantly via PIX, print a banking slip, or split a purchase across installments, your backend calls the same endpoint and simply varies the `method` field. This architecture means you ship one integration and support the full Brazilian payments landscape from day one.
+**Subtítulo da barra lateral:** Visão Geral
 
-## Single Endpoint, Multiple Methods
+**Descrição:** O CertoPay suporta pagamentos via PIX, Boleto e Cartão de Crédito através de um único endpoint unificado. Saiba quando usar cada método e como eles se diferenciam.
 
-All payment processing flows through one endpoint regardless of the payment method chosen:
+O CertoPay oferece um único ponto de integração unificado para os três métodos de pagamento mais usados no Brasil — PIX, Boleto e Cartão de Crédito. Seja seu cliente pagando instantaneamente via PIX, imprimindo um boleto bancário ou dividindo uma compra em parcelas, seu backend chama o mesmo endpoint e simplesmente varia o campo `method`. Essa arquitetura significa que você lança uma única integração e suporta todo o cenário de pagamentos brasileiro desde o primeiro dia.
+
+## Único Endpoint, Múltiplos Métodos
+
+Todo o processamento de pagamentos flui por um único endpoint, independentemente do método de pagamento escolhido:
 
 ```http
 POST /api/payment-gateway/process
 ```
 
-The `method` field in the request body determines which payment rail is used. Everything else — authentication, idempotency, error handling — works identically across all three methods.
+O campo `method` no corpo da requisição determina qual trilho de pagamento é usado. Tudo o mais — autenticação, idempotência, tratamento de erros — funciona de forma idêntica nos três métodos.
 
-<Note>
-  All monetary amounts must be expressed in **centavos** (smallest Brazilian currency unit). For example, R$ 297,00 is submitted as `29700`. Never send decimal values.
-</Note>
+> **Nota:** Todos os valores monetários devem ser expressos em **centavos** (a menor unidade da moeda brasileira). Por exemplo, R$ 297,00 é enviado como `29700`. Nunca envie valores decimais.
 
-## Authentication & Idempotency
+## Autenticação e Idempotência
 
-Every request to `/api/payment-gateway/process` requires two headers:
+Toda requisição para `/api/payment-gateway/process` requer dois cabeçalhos:
 
-| Header | Description |
+| Cabeçalho | Descrição |
 |---|---|
-| `X-Api-Key` | Your secret API key. Keep this server-side — never expose it in client code. |
-| `Idempotency-Key` | A UUID v4 you generate per payment attempt. Re-sending the same key within 24 hours returns the original response without creating a duplicate charge. |
+| `X-Api-Key` | Sua chave secreta de API. Mantenha-a no lado do servidor — nunca a exponha em código do cliente. |
+| `Idempotency-Key` | Um UUID v4 que você gera para cada tentativa de pagamento. Reenviar a mesma chave dentro de 24 horas retorna a resposta original sem criar uma cobrança duplicada. |
 
 ```http
 X-Api-Key: sk_live_sua_chave_aqui
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 ```
 
-<Warning>
-  Always generate a **fresh UUID v4** for each new payment attempt. Reusing an `Idempotency-Key` from a previous transaction is safe for retries of the *same* payment, but using it for a different order will silently return the original transaction data instead of creating a new one.
-</Warning>
+> **Aviso:** Sempre gere um **UUID v4 novo** para cada nova tentativa de pagamento. Reutilizar um `Idempotency-Key` de uma transação anterior é seguro para repetições do *mesmo* pagamento, mas usá-lo para um pedido diferente fará com que os dados da transação original sejam retornados silenciosamente, em vez de criar uma nova.
 
-## Payment Method Comparison
+## Comparativo de Métodos de Pagamento
 
-Use this table to decide which method best fits your checkout flow:
+Use esta tabela para decidir qual método se encaixa melhor no seu fluxo de checkout:
 
-| Method | Response time | Confirmation | Supports installments |
+| Método | Tempo de resposta | Confirmação | Suporta parcelamento |
 |---|---|---|---|
-| **PIX** | Instant | Webhook `transaction.paid` | No |
-| **Boleto** | Immediate (slip issued) | 1–3 business days via webhook | No |
-| **Credit Card** | Immediate | `CAPTURED` status in response | Yes (up to 12×) |
+| **PIX** | Instantâneo | Webhook `transaction.paid` | Não |
+| **Boleto** | Imediato (boleto emitido) | 1–3 dias úteis via webhook | Não |
+| **Cartão de Crédito** | Imediato | Status `CAPTURED` na resposta | Sim (até 12×) |
 
-- **PIX** is the best default for digital goods and time-sensitive orders. Funds are confirmed in seconds, 24 hours a day, 7 days a week.
-- **Boleto** suits customers without a credit card or those who prefer offline payment. Expect a confirmation lag of one to three business days.
-- **Credit Card** supports installments (`installments` field, up to 12×) and card tokenization for subscriptions and repeat customers.
+- O **PIX** é a melhor opção padrão para produtos digitais e pedidos sensíveis ao tempo. Os fundos são confirmados em segundos, 24 horas por dia, 7 dias por semana.
+- O **Boleto** é adequado para clientes sem cartão de crédito ou que preferem pagamento offline. Espere uma defasagem de confirmação de um a três dias úteis.
+- O **Cartão de Crédito** suporta parcelamento (campo `installments`, até 12×) e tokenização de cartão para assinaturas e clientes recorrentes.
 
-## Payment Lifecycle
+## Ciclo de Vida do Pagamento
 
-Each payment method follows a distinct status progression. Understanding the lifecycle helps you decide when to grant access or fulfill an order.
+Cada método de pagamento segue uma progressão de status distinta. Entender o ciclo de vida ajuda você a decidir quando conceder acesso ou finalizar um pedido.
 
-<Tabs>
-  <Tab title="PIX & Boleto">
-    PIX and Boleto share the same two-state lifecycle:
+### PIX e Boleto
 
-    ```
-    PENDING ──────────────────────► PAID
-       │                             │
-    Slip/QR issued           Webhook received:
-    awaiting payment         transaction.paid
-    ```
+PIX e Boleto compartilham o mesmo ciclo de vida de dois estados:
 
-    - The transaction is created with `status: PENDING`.
-    - When the buyer completes payment, CertoPay fires a `transaction.paid` webhook event.
-    - Always verify the final state with `GET /api/transactions/{id}` before fulfilling the order.
-  </Tab>
-  <Tab title="Credit Card">
-    Credit Card payments go through an authorization-then-capture flow:
+```
+PENDING ──────────────────────► PAID
+   │                             │
+Boleto/QR emitido          Webhook recebido:
+aguardando pagamento       transaction.paid
+```
 
-    ```
-    AUTHORIZED ──────────────────► CAPTURED
-         │                            │
-    Funds reserved              Charge settled
-    on card                     (default: immediate)
-    ```
+- A transação é criada com `status: PENDING`.
+- Quando o comprador conclui o pagamento, o CertoPay disparao o evento de webhook `transaction.paid`.
+- Sempre verifique o estado final com `GET /api/transactions/{id}` antes de finalizar o pedido.
 
-    - A successful charge returns `status: CAPTURED` immediately when auto-capture is enabled (default).
-    - A `status: REFUSED` response means the issuer declined the card — prompt the buyer to try a different card.
-  </Tab>
-</Tabs>
+### Cartão de Crédito
 
-## Choose a Payment Method
+Os pagamentos via Cartão de Crédito passam por um fluxo de autorização e depois captura:
 
-<CardGroup cols={3}>
-  <Card title="PIX" icon="bolt" href="/payments/pix">
-    Instant payments via QR Code or copy-paste EMV code. Best for digital products and fast checkout flows.
-  </Card>
-  <Card title="Boleto" icon="barcode" href="/payments/boleto">
-    Banking slips payable at any bank, Lotérica, or internet banking. Confirmed within 1–3 business days.
-  </Card>
-  <Card title="Credit Card" icon="credit-card" href="/payments/credit-card">
-    Visa, Mastercard, and Elo with up to 12× installments. Supports tokenization for recurring billing.
-  </Card>
-</CardGroup>
+```
+AUTHORIZED ──────────────────► CAPTURED
+     │                            │
+Fundos reservados           Cobrança liquidada
+no cartão                   (padrão: imediato)
+```
+
+- Uma cobrança bem-sucedida retorna `status: CAPTURED` imediatamente quando a captura automática está habilitada (padrão).
+- Uma resposta `status: REFUSED` significa que o emissor recusou o cartão — solicite que o comprador tente um cartão diferente.
+
+## Escolha um Método de Pagamento
+
+**PIX** — Pagamentos instantâneos via QR Code ou código EMV para copiar e colar. Ideal para produtos digitais e fluxos de checkout rápidos.
+
+**Boleto** — Boletos bancários pagáveis em qualquer banco, Lotérica ou internet banking. Confirmados em 1–3 dias úteis.
+
+**Cartão de Crédito** — Visa, Mastercard e Elo com até 12× de parcelamento. Suporta tokenização para cobrança recorrente.
