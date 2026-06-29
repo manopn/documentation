@@ -1,10 +1,14 @@
 ---
-title: "Register or Update a Webhook — POST /api/webhooks/upsert"
-sidebarTitle: "Register Webhook"
-description: "POST /api/webhooks/upsert — Register or update your webhook URL to receive real-time transaction event notifications from CertoPay."
+
+# Registrar ou Atualizar um Webhook — POST /api/webhooks/upsert
+
+**Descrição:** `POST /api/webhooks/upsert` — Registra ou atualiza sua URL de webhook para receber notificações de eventos de transação em tempo real da CertoPay.
+
 ---
 
-Use this endpoint to register an HTTPS URL that CertoPay will call whenever a transaction event occurs in your account — such as a payment being confirmed, a boleto expiring, or a refund being processed. CertoPay sends a `POST` request with a JSON payload to your URL each time a qualifying event is triggered. If you have already registered a webhook URL, calling this endpoint again will update it with the new value (upsert behavior).
+Use este endpoint para registrar uma URL HTTPS que a CertoPay chamará sempre que um evento de transação ocorrer na sua conta — como a confirmação de um pagamento, o vencimento de um boleto ou o processamento de um reembolso. A CertoPay envia uma requisição `POST` com um payload JSON para a sua URL cada vez que um evento qualificado é disparado. Se você já tiver uma URL de webhook registrada, chamar este endpoint novamente irá atualizá-la com o novo valor (comportamento de upsert).
+
+---
 
 ## Endpoint
 
@@ -12,25 +16,28 @@ Use this endpoint to register an HTTPS URL that CertoPay will call whenever a tr
 POST https://v2.certopaybrasil.com/api/webhooks/upsert
 ```
 
-## Authentication
+---
 
-All requests must include your secret API key in the `X-Api-Key` header.
+## Autenticação
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
-</ParamField>
+Todas as requisições devem incluir sua chave de API secreta no cabeçalho `X-Api-Key`.
 
-<ParamField header="Content-Type" type="string" required>
-  Must be `application/json`.
-</ParamField>
+| Cabeçalho | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta da CertoPay (ex.: `sk_live_sua_chave_aqui`). |
+| `Content-Type` | string | ✅ | Deve ser `application/json`. |
 
-## Request Body
+---
 
-<ParamField body="url" type="string" required>
-  The fully qualified HTTPS URL of your webhook endpoint. CertoPay will deliver transaction event notifications to this address. Must use the `https://` scheme — plain HTTP URLs are not accepted.
-</ParamField>
+## Corpo da Requisição
 
-## Example Request
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `url` | string | ✅ | URL HTTPS completa do seu endpoint de webhook. A CertoPay entregará as notificações de eventos de transação para este endereço. Deve utilizar o esquema `https://` — URLs em HTTP simples não são aceitas. |
+
+---
+
+## Exemplo de Requisição
 
 ```bash
 curl -X POST https://v2.certopaybrasil.com/api/webhooks/upsert \
@@ -39,7 +46,7 @@ curl -X POST https://v2.certopaybrasil.com/api/webhooks/upsert \
   -d '{"url": "https://seusite.com/webhooks/certopay"}'
 ```
 
-## Example Request Body
+## Exemplo de Corpo da Requisição
 
 ```json
 {
@@ -47,11 +54,13 @@ curl -X POST https://v2.certopaybrasil.com/api/webhooks/upsert \
 }
 ```
 
-## Response
+---
 
-### 200 — Success
+## Resposta
 
-A successful call returns a confirmation that the webhook URL has been registered or updated.
+### 200 — Sucesso
+
+Uma chamada bem-sucedida retorna uma confirmação de que a URL do webhook foi registrada ou atualizada.
 
 ```json
 {
@@ -60,6 +69,6 @@ A successful call returns a confirmation that the webhook URL has been registere
 }
 ```
 
-<Note>
-  This endpoint uses upsert behavior — calling it again with a different URL will update your existing webhook registration rather than create a duplicate. There is only ever one active webhook URL per account. To view your currently registered URL, use [GET /api/webhooks](/api-reference/webhooks/get).
-</Note>
+---
+
+> 📝 **Nota:** Este endpoint utiliza comportamento de upsert — chamá-lo novamente com uma URL diferente atualizará o registro de webhook existente em vez de criar uma duplicata. Há apenas uma URL de webhook ativa por conta. Para visualizar a URL atualmente registrada, use `GET /api/webhooks`.
