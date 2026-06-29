@@ -1,54 +1,56 @@
 ---
-title: "CertoPay Quickstart: Your First Payment in 4 Steps"
+
+---
+title: "CertoPay Quickstart: Seu Primeiro Pagamento em 4 Etapas"
 sidebarTitle: "Quickstart"
-description: "Make your first PIX payment with CertoPay in under 5 minutes. Create a customer, create an order, process a payment, and verify the transaction."
+description: "Realize seu primeiro pagamento PIX com a CertoPay em menos de 5 minutos. Crie um cliente, crie um pedido, processe um pagamento e verifique a transação."
 ---
 
-This guide walks you through a complete end-to-end PIX payment using only `curl`. By the end you will have created a customer record, placed an order, generated a PIX QR Code, and confirmed the transaction status — the same four operations that power every CertoPay integration, regardless of language or framework.
+Este guia apresenta um fluxo completo de pagamento PIX usando apenas `curl`. Ao final, você terá criado um registro de cliente, realizado um pedido, gerado um QR Code PIX e confirmado o status da transação — as mesmas quatro operações que compõem toda integração CertoPay, independentemente da linguagem ou framework utilizado.
 
 <Tip>
-  Always save the `transactionId` from the process response — you'll need it to check status and issue refunds.
+  Sempre salve o `transactionId` retornado na resposta do processamento — você vai precisar dele para verificar o status e emitir reembolsos.
 </Tip>
 
-## Prerequisites
+## Pré-requisitos
 
-- A CertoPay seller account
-- Your `sk_live_` API key (see Step 1 below)
-- `curl` available in your terminal
+- Uma conta de vendedor na CertoPay
+- Sua chave de API com prefixo `sk_live_` (veja o Passo 1 abaixo)
+- `curl` disponível no seu terminal
 
 ---
 
 <Steps>
-  <Step title="Get Your API Key">
-    Log in to the [CertoPay Seller Dashboard](https://painel.certopaybrasil.com) and navigate to **Settings → API Keys**. Your active key is displayed with a masked suffix. If you have never generated a key, click **Create Key** — the full secret is shown only once, so copy it immediately and store it in a secure location such as a secrets manager or environment variable.
+  <Step title="Obtenha Sua Chave de API">
+    Acesse o [Painel do Vendedor CertoPay](https://painel.certopaybrasil.com) e navegue até **Configurações → Chaves de API**. Sua chave ativa é exibida com o sufixo mascarado. Se você nunca gerou uma chave, clique em **Criar Chave** — o segredo completo é exibido apenas uma vez, então copie imediatamente e armazene em um local seguro, como um gerenciador de segredos ou variável de ambiente.
 
     ```bash
-    # Verify your key is working — a 200 response means you're authenticated
+    # Verifique se sua chave está funcionando — uma resposta 200 significa que você está autenticado
     curl https://v2.certopaybrasil.com/api/api-keys/me \
       -H "X-Api-Key: sk_live_sua_chave"
     ```
 
     <Warning>
-      Never hard-code your API key in source code or commit it to a repository. Use environment variables (`CERTOPAY_API_KEY`) and add `.env` files to your `.gitignore`.
+      Nunca insira sua chave de API diretamente no código-fonte nem a commite em um repositório. Use variáveis de ambiente (`CERTOPAY_API_KEY`) e adicione arquivos `.env` ao seu `.gitignore`.
     </Warning>
   </Step>
-  <Step title="Create a Customer">
-    A **customer** represents the buyer. Creating a customer record first lets you associate multiple orders and transactions with the same person over time. You need to supply the buyer's full name, email address, Brazilian CPF (11-digit tax ID), and phone number.
+  <Step title="Crie um Cliente">
+    Um **cliente** representa o comprador. Criar um registro de cliente primeiro permite associar múltiplos pedidos e transações à mesma pessoa ao longo do tempo. Você precisa fornecer o nome completo, endereço de e-mail, CPF (11 dígitos) e número de telefone do comprador.
 
     <ParamField body="name" type="string" required>
-      Buyer's full name.
+      Nome completo do comprador.
     </ParamField>
 
     <ParamField body="email" type="string" required>
-      Buyer's email address.
+      Endereço de e-mail do comprador.
     </ParamField>
 
     <ParamField body="document" type="string" required>
-      Buyer's CPF — 11 digits, numbers only.
+      CPF do comprador — 11 dígitos, apenas números.
     </ParamField>
 
     <ParamField body="phone" type="string" required>
-      Buyer's phone number in Brazilian format, e.g. `(11) 99999-9999`.
+      Número de telefone do comprador no formato brasileiro, ex.: `(11) 99999-9999`.
     </ParamField>
 
     ```bash
@@ -63,7 +65,7 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
       }'
     ```
 
-    **Expected response — `201 Created`**
+    **Resposta esperada — `201 Created`**
 
     ```json
     {
@@ -74,30 +76,30 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
     ```
 
     <ResponseField name="id" type="string">
-      UUID of the newly created customer. Save this — you will use it in the next step.
+      UUID do cliente recém-criado. Salve este valor — você vai usá-lo na próxima etapa.
     </ResponseField>
 
     <ResponseField name="name" type="string">
-      The customer's full name as stored.
+      Nome completo do cliente conforme armazenado.
     </ResponseField>
 
     <ResponseField name="email" type="string">
-      The customer's email address as stored.
+      Endereço de e-mail do cliente conforme armazenado.
     </ResponseField>
 
     <Note>
-      If a customer with the same CPF already exists in your account, the API returns the existing record rather than creating a duplicate.
+      Se já existir um cliente com o mesmo CPF na sua conta, a API retorna o registro existente em vez de criar uma duplicata.
     </Note>
   </Step>
-  <Step title="Create an Order">
-    An **order** binds a customer to a specific purchase amount. Amounts must be expressed in **centavos** (integer). For example, R\$297,00 becomes `29700`. The order does not trigger any payment on its own — it simply establishes intent and is used as the target when you call the payment gateway in the next step.
+  <Step title="Crie um Pedido">
+    Um **pedido** vincula um cliente a um valor específico de compra. Os valores devem ser expressos em **centavos** (inteiro). Por exemplo, R\$297,00 se torna `29700`. O pedido não aciona nenhum pagamento por si só — ele apenas estabelece a intenção de compra e é usado como alvo ao chamar o gateway de pagamento na próxima etapa.
 
     <ParamField body="customerId" type="string" required>
-      The `id` of the customer created in Step 2.
+      O `id` do cliente criado no Passo 2.
     </ParamField>
 
     <ParamField body="amount" type="integer" required>
-      Total order value in centavos (e.g. `29700` = R\$297,00).
+      Valor total do pedido em centavos (ex.: `29700` = R\$297,00).
     </ParamField>
 
     ```bash
@@ -110,7 +112,7 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
       }'
     ```
 
-    **Expected response — `201 Created`**
+    **Resposta esperada — `201 Created`**
 
     ```json
     {
@@ -123,48 +125,48 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
     ```
 
     <ResponseField name="id" type="string">
-      UUID of the order. Pass this as `orderId` in the payment gateway call.
+      UUID do pedido. Passe este valor como `orderId` na chamada ao gateway de pagamento.
     </ResponseField>
 
     <ResponseField name="amount" type="integer">
-      Confirmed order amount in centavos.
+      Valor confirmado do pedido em centavos.
     </ResponseField>
 
     <ResponseField name="status" type="string">
-      Initial order status — always `PENDING` at creation.
+      Status inicial do pedido — sempre `PENDING` na criação.
     </ResponseField>
 
     <ResponseField name="createdAt" type="string">
-      ISO 8601 timestamp of when the order was created.
+      Timestamp ISO 8601 de quando o pedido foi criado.
     </ResponseField>
   </Step>
-  <Step title="Process a PIX Payment">
-    With an order in hand, call the payment gateway to generate a **PIX QR Code**. CertoPay returns an EMV string (the raw PIX payload) and a `qrCodeUrl` you can render as an image for the buyer to scan. The QR Code expires after 1 hour by default.
+  <Step title="Processe um Pagamento PIX">
+    Com um pedido em mãos, chame o gateway de pagamento para gerar um **QR Code PIX**. A CertoPay retorna uma string EMV (o payload bruto do PIX) e uma `qrCodeUrl` que você pode renderizar como imagem para o comprador escanear. O QR Code expira após 1 hora por padrão.
 
-    Include an `Idempotency-Key` header — a UUID v4 you generate — so the request can be safely retried without creating duplicate charges.
+    Inclua o header `Idempotency-Key` — um UUID v4 gerado por você — para que a requisição possa ser repetida com segurança sem criar cobranças duplicadas.
 
     <ParamField body="orderId" type="string" required>
-      UUID of the order created in Step 3.
+      UUID do pedido criado no Passo 3.
     </ParamField>
 
     <ParamField body="method" type="string" required>
-      Payment method. Use `PIX` for this quickstart. Other valid values: `BOLETO`, `CREDIT_CARD`.
+      Método de pagamento. Use `PIX` para este quickstart. Outros valores válidos: `BOLETO`, `CREDIT_CARD`.
     </ParamField>
 
     <ParamField body="amount" type="integer" required>
-      Payment amount in centavos. Must match the order amount.
+      Valor do pagamento em centavos. Deve corresponder ao valor do pedido.
     </ParamField>
 
     <ParamField body="buyerDoc" type="string" required>
-      Buyer's CPF (11 digits).
+      CPF do comprador (11 dígitos).
     </ParamField>
 
     <ParamField body="buyerCellNumber" type="string" required>
-      Buyer's mobile phone number, e.g. `(11) 99999-9999`.
+      Número de celular do comprador, ex.: `(11) 99999-9999`.
     </ParamField>
 
     <ParamField body="buyerAddress" type="object" required>
-      Buyer's address object. Required fields: `postal_code`, `street`, `number`, `neighborhood`, `city`, `state`.
+      Objeto de endereço do comprador. Campos obrigatórios: `postal_code`, `street`, `number`, `neighborhood`, `city`, `state`.
     </ParamField>
 
     ```bash
@@ -189,7 +191,7 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
       }'
     ```
 
-    **Expected response — `201 Created`**
+    **Resposta esperada — `201 Created`**
 
     ```json
     {
@@ -206,38 +208,38 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
     ```
 
     <ResponseField name="transactionId" type="string">
-      UUID of the transaction. **Save this immediately** — it is required to poll status and issue refunds.
+      UUID da transação. **Salve imediatamente** — é obrigatório para consultar o status e emitir reembolsos.
     </ResponseField>
 
     <ResponseField name="status" type="string">
-      Transaction status. `PENDING` means the QR Code has been generated and is awaiting buyer payment.
+      Status da transação. `PENDING` significa que o QR Code foi gerado e está aguardando o pagamento do comprador.
     </ResponseField>
 
     <ResponseField name="pix.emv" type="string">
-      The raw PIX EMV/Copia e Cola string. Display this as a text field so the buyer can copy and paste it into their banking app.
+      A string EMV bruta do PIX (Copia e Cola). Exiba-a como campo de texto para que o comprador possa copiá-la e colá-la no app bancário.
     </ResponseField>
 
     <ResponseField name="pix.qrCodeUrl" type="string">
-      URL of the rendered QR Code image. Embed this in your checkout page.
+      URL da imagem do QR Code renderizado. Incorpore-a na sua página de checkout.
     </ResponseField>
 
     <ResponseField name="pix.expiresAt" type="string">
-      ISO 8601 timestamp after which the QR Code is no longer valid.
+      Timestamp ISO 8601 após o qual o QR Code não é mais válido.
     </ResponseField>
 
     <Tip>
-      Render both the `qrCodeUrl` image and the `emv` copy-paste string in your checkout UI. Many Brazilian buyers prefer to pay via "Pix Copia e Cola" on desktop rather than scanning a QR Code on mobile.
+      Exiba tanto a imagem do `qrCodeUrl` quanto a string `emv` para copiar e colar na sua UI de checkout. Muitos compradores brasileiros preferem pagar via "Pix Copia e Cola" no desktop em vez de escanear um QR Code pelo celular.
     </Tip>
   </Step>
-  <Step title="Check the Transaction Status">
-    After presenting the QR Code to the buyer, you can retrieve the current transaction status at any time by calling the Transactions endpoint with the `transactionId` you saved in Step 4. In production, prefer [webhooks](/webhooks) over polling — CertoPay will POST to your endpoint the moment status changes to `PAID`.
+  <Step title="Verifique o Status da Transação">
+    Após apresentar o QR Code ao comprador, você pode consultar o status atual da transação a qualquer momento chamando o endpoint de Transações com o `transactionId` salvo no Passo 4. Em produção, prefira [webhooks](/webhooks) ao invés de polling — a CertoPay enviará um POST ao seu endpoint no momento em que o status mudar para `PAID`.
 
     ```bash
     curl https://v2.certopaybrasil.com/api/transactions/uuid-da-transacao \
       -H "X-Api-Key: sk_live_sua_chave"
     ```
 
-    **Expected response — `200 OK`**
+    **Resposta esperada — `200 OK`**
 
     ```json
     {
@@ -250,51 +252,51 @@ This guide walks you through a complete end-to-end PIX payment using only `curl`
     ```
 
     <ResponseField name="id" type="string">
-      The transaction UUID.
+      O UUID da transação.
     </ResponseField>
 
     <ResponseField name="orderId" type="string">
-      The UUID of the parent order.
+      O UUID do pedido pai.
     </ResponseField>
 
     <ResponseField name="method" type="string">
-      Payment method used — `PIX`, `BOLETO`, or `CREDIT_CARD`.
+      Método de pagamento utilizado — `PIX`, `BOLETO` ou `CREDIT_CARD`.
     </ResponseField>
 
     <ResponseField name="amount" type="integer">
-      Transaction amount in centavos.
+      Valor da transação em centavos.
     </ResponseField>
 
     <ResponseField name="status" type="string">
-      Current transaction status. See the [status lifecycle table](/introduction#transaction-status-lifecycle) for all possible values.
+      Status atual da transação. Consulte a [tabela de ciclo de vida de status](/introduction#transaction-status-lifecycle) para todos os valores possíveis.
     </ResponseField>
 
     <Note>
-      For production integrations, set up a [webhook endpoint](/webhooks) so CertoPay pushes status updates to your server in real time. Polling the transactions endpoint works for development and testing, but webhooks are more reliable and efficient for production use.
+      Para integrações em produção, configure um [endpoint de webhook](/webhooks) para que a CertoPay envie atualizações de status ao seu servidor em tempo real. O polling do endpoint de transações funciona para desenvolvimento e testes, mas webhooks são mais confiáveis e eficientes para uso em produção.
     </Note>
   </Step>
 </Steps>
 
 ---
 
-## What's Next?
+## Próximos Passos
 
-You've completed a full PIX payment flow. From here you can explore the other payment methods and production-readiness features.
+Você concluiu um fluxo completo de pagamento PIX. A partir daqui, você pode explorar os outros métodos de pagamento e os recursos para preparar sua integração para produção.
 
 <CardGroup cols={2}>
-  <Card title="PIX Payments" icon="bolt" href="/payments/pix">
-    Deep-dive into PIX: expiry configuration, dynamic vs. static QR Codes, and refunds.
+  <Card title="Pagamentos PIX" icon="bolt" href="/payments/pix">
+    Aprofunde-se no PIX: configuração de expiração, QR Codes dinâmicos vs. estáticos e reembolsos.
   </Card>
 
-  <Card title="Boleto Payments" icon="barcode" href="/payments/boleto">
-    Issue boletos with custom due dates and handle delayed settlement.
+  <Card title="Pagamentos com Boleto" icon="barcode" href="/payments/boleto">
+    Emita boletos com datas de vencimento personalizadas e gerencie a liquidação com prazo.
   </Card>
 
-  <Card title="Credit Card" icon="credit-card" href="/payments/credit-card">
-    Authorize, capture, and refund card payments with installment support.
+  <Card title="Cartão de Crédito" icon="credit-card" href="/payments/credit-card">
+    Autorize, capture e reembolse pagamentos com cartão com suporte a parcelamento.
   </Card>
 
   <Card title="Webhooks" icon="webhook" href="/webhooks">
-    Receive real-time payment confirmations on your server endpoint.
+    Receba confirmações de pagamento em tempo real no endpoint do seu servidor.
   </Card>
 </CardGroup>
