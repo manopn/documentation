@@ -1,109 +1,102 @@
----
-title: "CertoPay API Security: Key Storage and Best Practices"
-sidebarTitle: "Security"
-description: "Keep your CertoPay API Key secure. Covers key storage, rotation, webhook verification, and rate limit handling for production integrations."
----
+# Segurança da API CertoPay: Armazenamento de Chaves e Boas Práticas
 
-Your CertoPay API Key is the master credential that authorizes every payment and data operation on your account. Anyone who holds it can initiate charges, query transactions, and modify your integration. This page covers the essential steps to keep that key — and your integration as a whole — secure in production.
+**Subtítulo da barra lateral:** Segurança
 
-## Protecting Your API Key
+**Descrição:** Mantenha sua Chave de API do CertoPay segura. Cobre armazenamento de chaves, rotação, verificação de webhooks e tratamento de limites de taxa para integrações em produção.
 
-The single most common cause of API key compromise is accidental exposure: committing a key to source control, embedding it in client-side JavaScript, or logging it in plain text. Follow these rules to prevent that.
+Sua Chave de API do CertoPay é a credencial mestra que autoriza toda operação de pagamento e de dados em sua conta. Qualquer pessoa que a possua pode iniciar cobranças, consultar transações e modificar sua integração. Esta página cobre os passos essenciais para manter essa chave — e sua integração como um todo — segura em produção.
 
-### Never expose your key on the client side
+## Protegendo Sua Chave de API
 
-Your API Key must only ever exist on your **server**. It must never appear in:
-- Browser JavaScript (React, Vue, vanilla JS, etc.)
-- Native or hybrid mobile apps (iOS, Android, React Native, Flutter)
-- Public or private Git repositories (even in commit history)
-- Build artifacts, Docker images, or CI/CD logs
+A causa mais comum de comprometimento de uma chave de API é a exposição acidental: enviar uma chave para o controle de versão, incorporá-la em JavaScript do lado do cliente ou registrá-la em texto puro nos logs. Siga estas regras para evitar isso.
 
-<Warning>
-  If your API Key is ever accidentally committed to a repository or exposed in a public location, **rotate it immediately** using `POST /api/api-keys/me/regenerate`. Treat any window of exposure as a confirmed compromise.
-</Warning>
+### Nunca exponha sua chave no lado do cliente
 
-### Store keys in environment variables
+Sua Chave de API deve existir apenas no seu **servidor**. Ela nunca deve aparecer em:
+- JavaScript de navegador (React, Vue, vanilla JS, etc.)
+- Aplicativos móveis nativos ou híbridos (iOS, Android, React Native, Flutter)
+- Repositórios Git públicos ou privados (mesmo no histórico de commits)
+- Artefatos de build, imagens Docker ou logs de CI/CD
 
-Never hardcode your API Key as a string literal in source code. Load it from an environment variable at runtime:
+> **Aviso:** Se sua Chave de API for acidentalmente enviada a um repositório ou exposta em algum local público, **rotacione-a imediatamente** usando `POST /api/api-keys/me/regenerate`. Trate qualquer janela de exposição como um comprometimento confirmado.
 
-<CodeGroup>
+### Armazene chaves em variáveis de ambiente
 
-```bash .env
+Nunca codifique sua Chave de API como um literal de string diretamente no código-fonte. Carregue-a a partir de uma variável de ambiente em tempo de execução:
+
+**.env**
+```bash
 CERTOPAY_API_KEY=sk_live_sua_chave_aqui
 ```
 
-```javascript Node.js
+**Node.js**
+```javascript
 const apiKey = process.env.CERTOPAY_API_KEY;
 ```
 
-```python Python
+**Python**
+```python
 import os
 
 api_key = os.environ["CERTOPAY_API_KEY"]
 ```
 
-</CodeGroup>
+Para ambientes hospedados, use o sistema de gerenciamento de segredos da sua plataforma — AWS Secrets Manager, GCP Secret Manager, Vercel Environment Variables, Railway secrets, etc. — em vez de um arquivo `.env` simples em disco.
 
-For hosted environments, use your platform's secret management system — AWS Secrets Manager, GCP Secret Manager, Vercel Environment Variables, Railway secrets, etc. — rather than a plain `.env` file on disk.
+> **Nota:** Adicione `.env` ao seu arquivo `.gitignore` para garantir que ele nunca seja enviado ao controle de versão.
 
-<Note>
-  Add `.env` to your `.gitignore` file to ensure it is never committed to version control.
-</Note>
+### Use chaves separadas para teste e produção
 
-### Use separate keys for test and production
+O CertoPay fornece chaves distintas para cada ambiente. Sempre:
+- Use uma **chave de teste** (`sk_test_...`) durante o desenvolvimento e o staging
+- Use uma **chave live** (`sk_live_...`) apenas no seu ambiente de produção
+- Nunca misture as duas — uma chave de teste não pode processar pagamentos reais, e uma chave live em um ambiente de teste é um risco desnecessário
 
-CertoPay provides distinct keys for each environment. Always:
-- Use a **test key** (`sk_test_...`) during development and staging
-- Use a **live key** (`sk_live_...`) only in your production environment
-- Never mix the two — a test key cannot process real payments, and a live key in a test environment is an unnecessary risk
+### Rotacione as chaves regularmente
 
-### Rotate keys regularly
-
-Periodic key rotation limits the damage window if a key is ever silently compromised. Rotate your active key by calling:
+A rotação periódica de chaves limita a janela de dano caso uma chave seja silenciosamente comprometida. Rotacione sua chave ativa chamando:
 
 ```http
 POST /api/api-keys/me/regenerate
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-After rotation, update the key in all environments and secret stores immediately. The old key is invalidated as soon as the new one is issued.
+Após a rotação, atualize a chave em todos os ambientes e cofres de segredos imediatamente. A chave antiga é invalidada no momento em que a nova é emitida.
 
 ---
 
-## Webhook Verification
+## Verificação de Webhooks
 
-CertoPay sends webhook events (such as `transaction.paid`) to your endpoint when payment status changes. However, webhook payloads alone cannot be trusted as proof of payment — an attacker could POST a forged `PAID` payload directly to your endpoint.
+O CertoPay envia eventos de webhook (como `transaction.paid`) para seu endpoint quando o status do pagamento muda. No entanto, os payloads de webhook isoladamente não podem ser considerados prova de pagamento — um atacante poderia enviar um payload `PAID` forjado diretamente para seu endpoint via POST.
 
-### Always verify by querying the transaction
+### Sempre verifique consultando a transação
 
-After receiving any webhook, confirm the actual transaction status by making an authenticated API call:
+Após receber qualquer webhook, confirme o status real da transação fazendo uma chamada autenticada à API:
 
 ```http
 GET /api/transactions/{transactionId}
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-Only grant access to the purchased product or service after the API response confirms the transaction `status` is `PAID` or `CAPTURED`.
+Só conceda acesso ao produto ou serviço adquirido depois que a resposta da API confirmar que o `status` da transação é `PAID` ou `CAPTURED`.
 
-<Warning>
-  **Never fulfill an order based solely on the webhook payload.** Always perform a server-side lookup to confirm the transaction status directly from CertoPay's API before delivering goods or services.
-</Warning>
+> **Aviso:** **Nunca finalize um pedido baseando-se apenas no payload do webhook.** Sempre realize uma consulta no lado do servidor para confirmar o status da transação diretamente na API do CertoPay antes de entregar bens ou serviços.
 
-### Webhook endpoint requirements
+### Requisitos do endpoint de webhook
 
-- Your webhook endpoint **must use HTTPS**. CertoPay will not deliver events to plain HTTP endpoints.
-- Respond with HTTP `200` as quickly as possible — do the heavy processing asynchronously (queue a job, update the DB, etc.) to avoid delivery timeouts.
-- If your endpoint returns a non-`2xx` status, CertoPay will attempt redelivery. Ensure your handler is idempotent so duplicate deliveries don't cause double-fulfillment.
+- Seu endpoint de webhook **deve usar HTTPS**. O CertoPay não entregará eventos a endpoints em HTTP simples.
+- Responda com HTTP `200` o mais rápido possível — faça o processamento pesado de forma assíncrona (colocar um job em fila, atualizar o BD, etc.) para evitar timeouts de entrega.
+- Se seu endpoint retornar um status diferente de `2xx`, o CertoPay tentará reentregar o evento. Garanta que seu handler seja idempotente para que entregas duplicadas não causem entrega duplicada do pedido.
 
 ---
 
-## Rate Limits
+## Limites de Taxa
 
-CertoPay enforces a default limit of **100 requests per minute** per API Key to protect service stability. Exceeding this limit returns an `HTTP 429 Too Many Requests` response.
+O CertoPay aplica um limite padrão de **100 requisições por minuto** por Chave de API para proteger a estabilidade do serviço. Exceder esse limite retorna uma resposta `HTTP 429 Too Many Requests`.
 
-### Implement exponential backoff on 429
+### Implemente backoff exponencial em respostas 429
 
-When your integration receives a `429` response, do not immediately retry — that will only worsen the situation. Instead, wait an exponentially increasing amount of time between retries:
+Quando sua integração receber uma resposta `429`, não tente novamente imediatamente — isso só vai piorar a situação. Em vez disso, espere um tempo crescente exponencialmente entre as tentativas:
 
 ```javascript
 async function withRetry(fn, retries = 3) {
@@ -119,22 +112,18 @@ async function withRetry(fn, retries = 3) {
 }
 ```
 
-This waits 1 second before the first retry, 2 seconds before the second, and 4 seconds before the third, reducing pressure on the API while giving your request the best chance of succeeding.
+Isso espera 1 segundo antes da primeira tentativa, 2 segundos antes da segunda e 4 segundos antes da terceira, reduzindo a pressão sobre a API e dando à sua requisição a melhor chance de sucesso.
 
-<Tip>
-  If your integration regularly approaches or exceeds the 100 req/min limit — for example, in bulk payment processing scenarios — contact CertoPay support to request a higher rate limit for your account.
-</Tip>
+> **Dica:** Se sua integração regularmente se aproxima ou excede o limite de 100 req/min — por exemplo, em cenários de processamento de pagamentos em massa — contate o suporte do CertoPay para solicitar um limite de taxa maior para sua conta.
 
 ---
 
-## HTTPS Only
+## Somente HTTPS
 
-All communication with the CertoPay API must use **HTTPS**. Plain HTTP is not supported and connections will be refused.
+Toda comunicação com a API do CertoPay deve usar **HTTPS**. HTTP simples não é suportado e as conexões serão recusadas.
 
-This applies to:
-- Every outbound API call from your server to `https://v2.certopaybrasil.com/api`
-- Your inbound webhook endpoint, which must also be served over HTTPS
+Isso se aplica a:
+- Toda chamada de API de saída do seu servidor para `https://v2.certopaybrasil.com/api`
+- Seu endpoint de webhook de entrada, que também deve ser servido via HTTPS
 
-<Note>
-  TLS certificates on your webhook endpoint must be valid and issued by a trusted Certificate Authority. Self-signed certificates will cause webhook delivery failures.
-</Note>
+> **Nota:** Os certificados TLS no seu endpoint de webhook devem ser válidos e emitidos por uma Autoridade Certificadora confiável. Certificados autoassinados causarão falhas na entrega de webhooks.
