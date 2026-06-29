@@ -1,31 +1,32 @@
 ---
-title: "CertoPay Webhooks: Receive Real-Time Payment Events"
-sidebarTitle: "Overview"
-description: "Configure a webhook endpoint to receive real-time CertoPay transaction events. Register your URL, handle delivery retries, and verify event authenticity."
----
 
-Webhooks are the primary way CertoPay communicates payment lifecycle changes back to your application. Instead of polling the API repeatedly to check whether a PIX transfer has cleared or a Boleto has been paid, you register an HTTPS endpoint on your server and CertoPay delivers a signed HTTP POST request the moment a transaction status changes. This is especially critical for asynchronous payment methods like **PIX** and **Boleto**, where confirmation can arrive seconds or even hours after the initial checkout.
+title: "Webhooks da CertoPay: Receba Eventos de Pagamento em Tempo Real"
+sidebarTitle: "Visão Geral"
+description: "Configure um endpoint de webhook para receber eventos de transações da CertoPay em tempo real. Cadastre sua URL, gerencie novas tentativas de entrega e valide a autenticidade dos eventos."
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-## What Are Webhooks?
+Os webhooks são a principal forma de a CertoPay comunicar alterações no ciclo de vida dos pagamentos à sua aplicação. Em vez de consultar repetidamente a API para verificar se uma transferência PIX foi compensada ou um boleto foi pago, você registra um endpoint HTTPS em seu servidor, e a CertoPay envia uma requisição HTTP `POST` assinada assim que o status da transação muda. Isso é especialmente importante para métodos de pagamento assíncronos, como **PIX** e **Boleto**, cuja confirmação pode ocorrer segundos ou até horas após o checkout.
 
-When a transaction status changes — for example, when a PIX payment is confirmed — CertoPay sends an HTTP `POST` request containing a JSON payload to the URL you register. Your server processes that payload and responds with an HTTP `200` to acknowledge receipt.
+## O que são Webhooks?
+
+Quando o status de uma transação muda — por exemplo, quando um pagamento via PIX é confirmado — a CertoPay envia uma requisição HTTP `POST` contendo um payload JSON para a URL cadastrada. Seu servidor processa esse payload e responde com um HTTP `200` para confirmar o recebimento.
 
 <Note>
-  PIX and Boleto payments are **asynchronous** by nature. Your checkout flow creates the transaction and shows the payment instructions to the buyer, but the actual confirmation arrives later via webhook. Without a registered webhook endpoint, your system has no reliable way to know when those payments clear.
+  Pagamentos via **PIX** e **Boleto** são, por natureza, **assíncronos**. O checkout cria a transação e apresenta as instruções de pagamento ao comprador, mas a confirmação do pagamento chega posteriormente por meio do webhook. Sem um endpoint de webhook configurado, seu sistema não terá uma forma confiável de saber quando esses pagamentos foram compensados.
 </Note>
 
-Key characteristics of CertoPay webhooks:
+Características dos webhooks da CertoPay:
 
-- Delivered as `HTTP POST` with `Content-Type: application/json`
-- Include an `event` type, a timestamp, and a `data` object with transaction details
-- Retried automatically when your endpoint does not respond with `200`
-- Fully auditable through the delivery history endpoint
+* São enviados como requisições `HTTP POST` com `Content-Type: application/json`
+* Incluem um tipo de evento (`event`), um timestamp e um objeto `data` com os detalhes da transação
+* São reenviados automaticamente caso seu endpoint não responda com `HTTP 200`
+* Todo o histórico de entregas pode ser consultado através do endpoint de histórico
 
 ---
 
-## Register or Update a Webhook
+## Registrar ou Atualizar um Webhook
 
-Your account can have one active webhook URL at a time. Calling the upsert endpoint either registers a new URL or replaces the existing one.
+Sua conta pode possuir apenas uma URL de webhook ativa por vez. A chamada ao endpoint de *upsert* registra uma nova URL ou substitui a existente.
 
 ```http
 POST /api/webhooks/upsert
@@ -37,28 +38,28 @@ Content-Type: application/json
 }
 ```
 
-**Request body**
+**Corpo da requisição**
 
-| Field | Type   | Required | Description                                  |
-|-------|--------|----------|----------------------------------------------|
-| `url` | string | ✅ Yes   | The publicly reachable HTTPS URL that will receive webhook POST requests. |
+| Campo | Tipo   | Obrigatório | Descrição                                                        |
+| ----- | ------ | ----------- | ---------------------------------------------------------------- |
+| `url` | string | ✅ Sim       | URL pública HTTPS que receberá as requisições POST dos webhooks. |
 
 <Tip>
-  Always use **HTTPS**. CertoPay will not deliver events to plain HTTP endpoints. Make sure your SSL certificate is valid and your server returns a `200` response without redirects — redirects are not followed.
+  Utilize sempre **HTTPS**. A CertoPay não envia eventos para endpoints HTTP. Certifique-se de que seu certificado SSL é válido e que seu servidor responde com `HTTP 200` sem redirecionamentos — redirecionamentos não são seguidos.
 </Tip>
 
 ---
 
-## Query Your Registered Webhook
+## Consultar o Webhook Registrado
 
-Retrieve the currently registered webhook URL for your account.
+Recupere a URL de webhook atualmente cadastrada para sua conta.
 
 ```http
 GET /api/webhooks
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-**Example response**
+**Exemplo de resposta**
 
 ```json
 {
@@ -70,26 +71,26 @@ X-Api-Key: sk_live_sua_chave_aqui
 
 ---
 
-## Disable Your Webhook
+## Desabilitar o Webhook
 
-Sending a `DELETE` request removes the registered webhook endpoint. No further events will be delivered until you register a new URL.
+Enviar uma requisição `DELETE` remove o endpoint de webhook cadastrado. Nenhum outro evento será enviado até que uma nova URL seja registrada.
 
 ```http
 DELETE /api/webhooks
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-A successful deletion returns `HTTP 204 No Content`.
+Uma exclusão bem-sucedida retorna `HTTP 204 No Content`.
 
 <Warning>
-  Deleting your webhook while you have active PIX or Boleto transactions in flight means you **will not receive payment confirmations** for those transactions. Make sure you have an alternative reconciliation process in place before disabling your endpoint.
+  Se você remover seu webhook enquanto existirem transações PIX ou boletos ainda pendentes de confirmação, **não receberá as confirmações de pagamento** dessas transações. Antes de desabilitar o endpoint, certifique-se de possuir outro processo de conciliação.
 </Warning>
 
 ---
 
-## Webhook Payload Format
+## Formato do Payload do Webhook
 
-Every event delivered by CertoPay shares the same top-level envelope, regardless of event type. The `data` object contains the details specific to the transaction that triggered the event.
+Todos os eventos enviados pela CertoPay compartilham a mesma estrutura principal (*envelope*), independentemente do tipo de evento. O objeto `data` contém as informações específicas da transação que originou o evento.
 
 ```json
 {
@@ -106,77 +107,80 @@ Every event delivered by CertoPay shares the same top-level envelope, regardless
 }
 ```
 
-**Top-level fields**
+**Campos do nível superior**
 
-| Field        | Type   | Description                                              |
-|--------------|--------|----------------------------------------------------------|
-| `event`      | string | The event type identifier, e.g. `transaction.paid`.     |
-| `created_at` | string | ISO 8601 UTC timestamp of when the event was generated. |
-| `data`       | object | Transaction details for the event.                      |
+| Campo        | Tipo   | Descrição                                                        |
+| ------------ | ------ | ---------------------------------------------------------------- |
+| `event`      | string | Identificador do tipo de evento, por exemplo `transaction.paid`. |
+| `created_at` | string | Data e hora em UTC (ISO 8601) em que o evento foi gerado.        |
+| `data`       | object | Informações da transação relacionadas ao evento.                 |
 
-**`data` object fields**
+**Campos do objeto `data`**
 
-| Field           | Type    | Description                                                  |
-|-----------------|---------|--------------------------------------------------------------|
-| `transactionId` | string  | Unique identifier of the transaction (UUID).                 |
-| `orderId`       | string  | Identifier of the associated order (UUID).                   |
-| `amount`        | integer | Transaction amount in **centavos** (e.g. `29700` = R$ 297,00). |
-| `method`        | string  | Payment method: `PIX`, `BOLETO`, or `CREDIT_CARD`.           |
-| `status`        | string  | Current transaction status (see [Events](/webhooks/events)). |
-| `paidAt`        | string  | ISO 8601 UTC timestamp of when payment was confirmed. Present only on `transaction.paid` events. |
+| Campo           | Tipo    | Descrição                                                                                                       |
+| --------------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| `transactionId` | string  | Identificador único da transação (UUID).                                                                        |
+| `orderId`       | string  | Identificador do pedido associado (UUID).                                                                       |
+| `amount`        | integer | Valor da transação em **centavos** (ex.: `29700` = R$ 297,00).                                                  |
+| `method`        | string  | Método de pagamento: `PIX`, `BOLETO` ou `CREDIT_CARD`.                                                          |
+| `status`        | string  | Status atual da transação (consulte a página **Eventos**).                                                      |
+| `paidAt`        | string  | Data e hora em UTC (ISO 8601) em que o pagamento foi confirmado. Presente apenas em eventos `transaction.paid`. |
 
 ---
 
-## Handling Deliveries
+## Tratando as Entregas
 
-### Responding to CertoPay
+### Respondendo à CertoPay
 
-Your webhook endpoint must return an **HTTP `200` status code** within **5 seconds** of receiving the request. Any other status code, or a response that takes longer than 5 seconds, is treated as a failed delivery and queued for retry.
+Seu endpoint de webhook deve responder com um **HTTP `200`** em até **5 segundos** após receber a requisição. Qualquer outro código de resposta, ou uma resposta superior a 5 segundos, será considerada uma falha na entrega e o evento será agendado para uma nova tentativa.
 
 <Note>
-  The **5-second timeout** is strict. If your handler needs to perform slow operations — such as writing to a database, sending emails, or calling third-party APIs — acknowledge the webhook immediately with `200` and process the event asynchronously in a background job.
+  O limite de **5 segundos** é rigoroso. Caso seu processamento envolva operações demoradas — como gravação em banco de dados, envio de e-mails ou chamadas para APIs externas — responda imediatamente com `HTTP 200` e processe o evento de forma assíncrona em uma fila ou tarefa em segundo plano.
 </Note>
 
-### Automatic Retries
+### Novas Tentativas Automáticas
 
-When a delivery fails, CertoPay retries it automatically using an exponential backoff schedule. Retries continue until a `200` is received or the maximum retry window is exhausted. Ensure your handler is **idempotent** — the same event may be delivered more than once.
+Quando uma entrega falha, a CertoPay agenda automaticamente novas tentativas utilizando uma estratégia de **backoff exponencial**. As tentativas continuam até que seu endpoint responda com `HTTP 200` ou o período máximo de tentativas seja atingido.
 
-### Viewing Delivery History
+Por esse motivo, seu endpoint deve ser **idempotente**, pois o mesmo evento poderá ser entregue mais de uma vez.
 
-You can inspect every delivery attempt made to your endpoint, including request/response details and status.
+### Consultando o Histórico de Entregas
+
+Você pode visualizar todas as tentativas realizadas para seu endpoint, incluindo detalhes da requisição, resposta e status.
 
 ```http
 GET /api/webhooks/deliveries
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-**Filter by delivery status**
+**Filtrar por status da entrega**
 
-| Filter                    | Description                              |
-|---------------------------|------------------------------------------|
-| `?status=SUCCESS`         | Deliveries acknowledged with HTTP `200`. |
-| `?status=FAILED`          | Deliveries that received a non-`200` response or timed out. |
-| `?status=PENDING`         | Deliveries scheduled for their first attempt or a retry. |
+| Filtro            | Descrição                                                                      |
+| ----------------- | ------------------------------------------------------------------------------ |
+| `?status=SUCCESS` | Entregas confirmadas com `HTTP 200`.                                           |
+| `?status=FAILED`  | Entregas que retornaram um código diferente de `200` ou expiraram por timeout. |
+| `?status=PENDING` | Entregas aguardando a primeira tentativa ou um novo reenvio.                   |
 
-**Filter by event type**
+**Filtrar por tipo de evento**
 
 ```http
 GET /api/webhooks/deliveries?event=transaction.paid
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-### Retrying a Delivery Manually
+### Reenviando uma Entrega Manualmente
 
-If a delivery failed and you want to re-trigger it without waiting for the next automatic retry, use the manual retry endpoint.
+Caso uma entrega tenha falhado e você não queira aguardar a próxima tentativa automática, utilize o endpoint de reenvio manual.
 
 ```http
 POST /api/webhooks/deliveries/{deliveryId}/retry
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-Replace `{deliveryId}` with the delivery identifier returned by the delivery history endpoint.
+Substitua `{deliveryId}` pelo identificador retornado pelo endpoint de histórico de entregas.
 
-<Accordion title="Delivery history response example">
+<Accordion title="Exemplo de resposta do histórico de entregas">
+
 ```json
 {
   "deliveries": [
@@ -199,30 +203,31 @@ Replace `{deliveryId}` with the delivery identifier returned by the delivery his
   ]
 }
 ```
+
 </Accordion>
 
 ---
 
-## Verifying Events
+## Verificando Eventos
 
-Receiving a webhook is not enough on its own to confirm a payment. The payload could be replayed, spoofed, or represent an intermediate state. Before granting product or service access, always verify the transaction status directly with the CertoPay API.
+Receber um webhook, por si só, não é suficiente para confirmar um pagamento. O payload pode ser reenviado, falsificado (*spoofing*) ou representar um estado intermediário da transação. Antes de conceder acesso a qualquer produto ou serviço, sempre confirme o status diretamente através da API da CertoPay.
 
 ```http
 GET /api/transactions/{transactionId}
 X-Api-Key: sk_live_sua_chave_aqui
 ```
 
-Only proceed with fulfillment (e.g. releasing a digital product, activating a subscription) when the API confirms the transaction has `status: "PAID"`.
+Somente prossiga com a entrega do produto ou serviço (como liberar um produto digital ou ativar uma assinatura) quando a API confirmar que a transação possui `status: "PAID"`.
 
 <Warning>
-  **Never rely solely on the webhook payload to grant access.** Always make a server-side call to `GET /api/transactions/{transactionId}` to confirm the current status before fulfilling an order. This protects you against replay attacks and race conditions where a later status change (e.g. a chargeback) may invalidate an earlier `transaction.paid` event.
+  **Nunca conceda acesso baseando-se apenas no payload recebido pelo webhook.** Sempre faça uma chamada no servidor para `GET /api/transactions/{transactionId}` e confirme o status atual antes de concluir o pedido. Isso protege sua aplicação contra ataques de replay e condições de corrida (*race conditions*), nas quais uma alteração posterior (como um chargeback) pode invalidar um evento anterior de `transaction.paid`.
 </Warning>
 
-**Recommended verification flow**
+**Fluxo recomendado de verificação**
 
-1. Receive the `POST` to your webhook endpoint.
-2. Parse the `transactionId` from `data.transactionId`.
-3. Call `GET /api/transactions/{transactionId}` using your API key.
-4. Check that the response `status` matches your expected value (e.g. `PAID`).
-5. Fulfill the order in your system.
-6. Respond `HTTP 200` to CertoPay.
+1. Receba a requisição `POST` no endpoint do webhook.
+2. Extraia o `transactionId` de `data.transactionId`.
+3. Faça uma chamada para `GET /api/transactions/{transactionId}` utilizando sua chave de API.
+4. Verifique se o `status` retornado corresponde ao esperado (por exemplo, `PAID`).
+5. Conclua o pedido em seu sistema (liberação do produto ou serviço).
+6. Responda com `HTTP 200` para a CertoPay.
