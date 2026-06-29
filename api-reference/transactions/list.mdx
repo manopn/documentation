@@ -1,10 +1,14 @@
 ---
-title: "GET /api/transactions — List All Payment Transactions"
-sidebarTitle: "List Transactions"
-description: "GET /api/transactions — Retrieve all payment transactions in your CertoPay account. Returns an array with status, method, amount, and timestamps."
+
+# GET /api/transactions — Listar Todas as Transações de Pagamento
+
+**Descrição:** `GET /api/transactions` — Recupera todas as transações de pagamento da sua conta CertoPay. Retorna um array com status, método, valor e timestamps.
+
 ---
 
-Use this endpoint to retrieve the full list of payment transactions associated with your CertoPay account. Each object in the returned array contains identifying information, the payment method used, the amount in centavos, the current processing status, and timestamps for when the transaction was created and last updated. This is a read-only operation and requires no request body.
+Use este endpoint para recuperar a lista completa de transações de pagamento associadas à sua conta CertoPay. Cada objeto no array retornado contém informações de identificação, o método de pagamento utilizado, o valor em centavos, o status atual de processamento e os timestamps de criação e última atualização da transação. Esta é uma operação somente de leitura e não requer corpo na requisição.
+
+---
 
 ## Endpoint
 
@@ -12,26 +16,32 @@ Use this endpoint to retrieve the full list of payment transactions associated w
 GET https://v2.certopaybrasil.com/api/transactions
 ```
 
-## Authentication
+---
 
-All requests must include your secret API key in the `X-Api-Key` header. Keep this key secure and never expose it in client-side code.
+## Autenticação
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
-</ParamField>
+Todas as requisições devem incluir sua chave de API secreta no cabeçalho `X-Api-Key`. Mantenha esta chave em segurança e nunca a exponha em código do lado do cliente.
 
-## Example Request
+| Cabeçalho | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta da CertoPay (ex.: `sk_live_sua_chave_aqui`). |
+
+---
+
+## Exemplo de Requisição
 
 ```bash
 curl https://v2.certopaybrasil.com/api/transactions \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-## Response
+---
 
-Returns an array of transaction objects. An empty array (`[]`) is returned when no transactions exist yet.
+## Resposta
 
-### 200 — Success
+Retorna um array de objetos de transação. Um array vazio (`[]`) é retornado quando ainda não existem transações.
+
+### 200 — Sucesso
 
 ```json
 [
@@ -47,32 +57,14 @@ Returns an array of transaction objects. An empty array (`[]`) is returned when 
 ]
 ```
 
-### Response Fields
+### Campos da Resposta
 
-<ResponseField name="id" type="string">
-  Unique identifier (UUID) for this transaction.
-</ResponseField>
-
-<ResponseField name="orderId" type="string">
-  UUID of the order associated with this transaction. Use this to correlate a transaction with the corresponding order in your system.
-</ResponseField>
-
-<ResponseField name="method" type="string">
-  Payment method used for the transaction. Possible values: `PIX`, `BOLETO`, `CARD`.
-</ResponseField>
-
-<ResponseField name="amount" type="integer">
-  Transaction amount expressed in centavos (e.g. `29700` = R$ 297,00). All monetary values are integers to avoid floating-point rounding issues.
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Current status of the transaction (e.g. `PAID`, `PENDING`, `FAILED`, `REFUNDED`).
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp indicating when the transaction was created (e.g. `2026-06-26T10:00:00Z`).
-</ResponseField>
-
-<ResponseField name="updatedAt" type="string">
-  ISO 8601 timestamp indicating when the transaction record was last updated (e.g. `2026-06-26T10:05:00Z`).
-</ResponseField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | Identificador único (UUID) desta transação. |
+| `orderId` | string | UUID do pedido associado a esta transação. Use este campo para correlacionar uma transação com o pedido correspondente no seu sistema. |
+| `method` | string | Método de pagamento utilizado na transação. Valores possíveis: `PIX`, `BOLETO`, `CARD`. |
+| `amount` | integer | Valor da transação expresso em centavos (ex.: `29700` = R$ 297,00). Todos os valores monetários são inteiros para evitar problemas de arredondamento de ponto flutuante. |
+| `status` | string | Status atual da transação (ex.: `PAID`, `PENDING`, `FAILED`, `REFUNDED`). |
+| `createdAt` | string | Timestamp ISO 8601 indicando quando a transação foi criada (ex.: `2026-06-26T10:00:00Z`). |
+| `updatedAt` | string | Timestamp ISO 8601 indicando quando o registro da transação foi atualizado pela última vez (ex.: `2026-06-26T10:05:00Z`). |
