@@ -1,59 +1,45 @@
+# Consultar Cliente por UUID — GET /api/customers/{id}
+
+**GET /api/customers/{id} — Busca um único cliente pelo seu UUID. Retorna o registro completo do cliente incluindo nome, e-mail, documento e telefone.**
+
+Use este endpoint para buscar o registro completo de um único cliente pelo seu UUID. É útil quando você precisa verificar os dados de um cliente antes de processar um pedido, exibir informações do comprador no seu painel ou confirmar que um cadastro foi salvo corretamente. Passe o UUID do cliente na URL onde `{id}` aparece.
+
 ---
-title: "Retrieve a Customer by UUID — GET /api/customers"
-sidebarTitle: "Get Customer"
-description: "GET /api/customers/{id} — Fetch a single customer by their UUID. Returns the full customer record including name, email, document, and phone."
+
+## Requisição
+
+| Parâmetro | Local | Tipo | Obrigatório | Descrição |
+|---|---|---|---|---|
+| `X-Api-Key` | cabeçalho | string | ✅ | Sua chave secreta de API CertoPay. Inclua em toda solicitação como `X-Api-Key: sk_live_sua_chave_aqui`. |
+| `id` | caminho (path) | string | ✅ | O UUID do cliente a ser consultado. É o `id` retornado quando o cliente foi criado via `POST /api/customers`. |
+
+Este endpoint não aceita corpo na requisição.
+
 ---
 
-Use this endpoint to fetch the full record of a single customer by their UUID. This is useful when you need to verify a customer's details before processing an order, display buyer information in your dashboard, or confirm that a registration was saved correctly. Pass the customer UUID in the URL path where `{id}` appears.
+## Resposta
 
-## Request
+Uma solicitação bem-sucedida retorna **HTTP 200 OK** com o objeto completo do cliente.
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
-</ParamField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | UUID único que identifica o cliente. |
+| `name` | string | Nome completo do cliente. |
+| `email` | string | Endereço de e-mail do cliente. |
+| `document` | string | CPF do cliente (11 dígitos). |
+| `phone` | string | Número de telefone do cliente. |
+| `createdAt` | string | Timestamp ISO 8601 de quando o registro do cliente foi criado. |
 
-<ParamField path="id" type="string" required>
-  The UUID of the customer to retrieve. This is the `id` returned when the customer was created via `POST /api/customers`.
-</ParamField>
+---
 
-This endpoint accepts no request body.
-
-## Response
-
-A successful request returns **HTTP 200 OK** with the full customer object.
-
-<ResponseField name="id" type="string">
-  Unique UUID identifying the customer.
-</ResponseField>
-
-<ResponseField name="name" type="string">
-  Full name of the customer.
-</ResponseField>
-
-<ResponseField name="email" type="string">
-  Email address of the customer.
-</ResponseField>
-
-<ResponseField name="document" type="string">
-  CPF number (11 digits) of the customer.
-</ResponseField>
-
-<ResponseField name="phone" type="string">
-  Phone number of the customer.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp of when the customer record was created.
-</ResponseField>
-
-## Example
+## Exemplo
 
 ```bash
 curl https://v2.certopaybrasil.com/api/customers/uuid-do-customer \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-```json 200 OK
+```json
 {
   "id": "uuid-do-customer",
   "name": "João da Silva",
