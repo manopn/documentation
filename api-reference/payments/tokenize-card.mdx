@@ -1,12 +1,16 @@
 ---
-title: "POST /api/payment-gateway/tokenize-card — Tokenize a Card"
-sidebarTitle: "Tokenize Card"
-description: "POST /api/payment-gateway/tokenize-card — Store a card as a reusable token and charge returning customers without handling raw card data again."
+
+# POST /api/payment-gateway/tokenize-card — Tokenizar um Cartão
+
+**Descrição:** `POST /api/payment-gateway/tokenize-card` — Armazene um cartão como token reutilizável e cobre clientes recorrentes sem precisar manipular os dados brutos do cartão novamente.
+
 ---
 
-The `/api/payment-gateway/tokenize-card` endpoint allows you to securely vault a customer's credit card with CertoPay and receive a short opaque `cardToken` in return. On every subsequent charge for that customer, pass the token in the `cardToken` field of `POST /api/payment-gateway/process` instead of transmitting raw card data — keeping sensitive PAN information off your servers and simplifying your PCI-DSS compliance scope.
+O endpoint `/api/payment-gateway/tokenize-card` permite guardar com segurança o cartão de crédito de um cliente na CertoPay e receber em troca um `cardToken` opaco. Em toda cobrança subsequente desse cliente, passe o token no campo `cardToken` de `POST /api/payment-gateway/process` em vez de transmitir os dados brutos do cartão — mantendo as informações sensíveis do PAN fora dos seus servidores e simplificando seu escopo de conformidade com o PCI-DSS.
 
-## Base URL
+---
+
+## URL Base
 
 ```
 https://v2.certopaybrasil.com/api
@@ -18,89 +22,47 @@ https://v2.certopaybrasil.com/api
 POST /payment-gateway/tokenize-card
 ```
 
-## Request Headers
+---
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your secret API key. This must be kept server-side at all times.
-</ParamField>
+## Cabeçalhos da Requisição
 
-<ParamField header="Content-Type" type="string" required>
-  Must be `application/json`.
-</ParamField>
+| Cabeçalho | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta. Deve ser mantida no servidor em todos os momentos. |
+| `Content-Type` | string | ✅ | Deve ser `application/json`. |
 
-## Request Body
+---
 
-<ParamField body="customerId" type="string" required>
-  Your internal identifier for the customer (UUID recommended). CertoPay associates the resulting token with this ID so you can manage multiple cards per customer.
-</ParamField>
+## Corpo da Requisição
 
-<ParamField body="doc" type="string" required>
-  The cardholder's CPF (Cadastro de Pessoas Físicas), digits only. Example: `"12345678900"`.
-</ParamField>
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `customerId` | string | ✅ | Seu identificador interno para o cliente (UUID recomendado). A CertoPay associa o token resultante a este ID para que você possa gerenciar múltiplos cartões por cliente. |
+| `doc` | string | ✅ | CPF do titular do cartão, somente dígitos. Exemplo: `"12345678900"`. |
+| `holderName` | string | ✅ | Nome completo exatamente como aparece no cartão, em maiúsculas. Exemplo: `"JOAO DA SILVA"`. |
+| `cardNumber` | string | ✅ | PAN do cartão com 16 dígitos, somente números. Exemplo: `"4111111111111111"`. |
+| `brand` | string | ✅ | Bandeira do cartão. Valores aceitos: `"Visa"`, `"Mastercard"`, `"Elo"`. |
+| `expirationMonth` | string | ✅ | Mês de vencimento com dois dígitos. Exemplo: `"12"`. |
+| `expirationYear` | string | ✅ | Ano de vencimento com dois dígitos. Exemplo: `"28"` para 2028. |
+| `securityCode` | string | ✅ | Código de segurança CVV/CVC do cartão. Exemplo: `"123"`. |
+| `birthdate` | string | ✅ | Data de nascimento do titular no formato `YYYY-MM-DD`. Usada para verificação antifraude. Exemplo: `"1990-05-20"`. |
+| `cellNumber` | string | ✅ | Número de celular do titular no formato brasileiro. Exemplo: `"(11) 99999-9999"`. |
+| `address` | object | ✅ | Endereço de cobrança do titular. Deve corresponder ao endereço cadastrado no banco emissor para verificações AVS. |
 
-<ParamField body="holderName" type="string" required>
-  Full name exactly as it appears on the card, in uppercase. Example: `"JOAO DA SILVA"`.
-</ParamField>
+**Campos do objeto `address`**
 
-<ParamField body="cardNumber" type="string" required>
-  16-digit card PAN, digits only. Example: `"4111111111111111"`.
-</ParamField>
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `postal_code` | string | ✅ | CEP brasileiro, somente dígitos. Exemplo: `"01310930"`. |
+| `street` | string | ✅ | Nome da rua. Exemplo: `"Avenida Paulista"`. |
+| `number` | string | ✅ | Número do imóvel. Exemplo: `"100"`. |
+| `neighborhood` | string | ✅ | Bairro. Exemplo: `"Bela Vista"`. |
+| `city` | string | ✅ | Nome da cidade. Exemplo: `"São Paulo"`. |
+| `state` | string | ✅ | Código de duas letras do estado (UF). Exemplo: `"SP"`. |
 
-<ParamField body="brand" type="string" required>
-  Card network brand. Accepted values: `"Visa"`, `"Mastercard"`, `"Elo"`.
-</ParamField>
+---
 
-<ParamField body="expirationMonth" type="string" required>
-  Two-digit expiration month. Example: `"12"`.
-</ParamField>
-
-<ParamField body="expirationYear" type="string" required>
-  Two-digit expiration year. Example: `"28"` for 2028.
-</ParamField>
-
-<ParamField body="securityCode" type="string" required>
-  Card CVV/CVC security code. Example: `"123"`.
-</ParamField>
-
-<ParamField body="birthdate" type="string" required>
-  The cardholder's date of birth in `YYYY-MM-DD` format. Used for anti-fraud verification. Example: `"1990-05-20"`.
-</ParamField>
-
-<ParamField body="cellNumber" type="string" required>
-  The cardholder's mobile phone number in Brazilian format. Example: `"(11) 99999-9999"`.
-</ParamField>
-
-<ParamField body="address" type="object" required>
-  The cardholder's billing address. Must match the address on file with the card issuer for AVS checks.
-
-  <Expandable title="address fields">
-    <ParamField body="postal_code" type="string" required>
-      Brazilian CEP (postal code), digits only. Example: `"01310930"`.
-    </ParamField>
-
-    <ParamField body="street" type="string" required>
-      Street name. Example: `"Avenida Paulista"`.
-    </ParamField>
-
-    <ParamField body="number" type="string" required>
-      Street number. Example: `"100"`.
-    </ParamField>
-
-    <ParamField body="neighborhood" type="string" required>
-      Neighborhood (bairro). Example: `"Bela Vista"`.
-    </ParamField>
-
-    <ParamField body="city" type="string" required>
-      City name. Example: `"São Paulo"`.
-    </ParamField>
-
-    <ParamField body="state" type="string" required>
-      Two-letter state code (UF). Example: `"SP"`.
-    </ParamField>
-  </Expandable>
-</ParamField>
-
-## Example Request
+## Exemplo de Requisição
 
 ```bash
 curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/tokenize-card \
@@ -128,13 +90,15 @@ curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/tokenize-card \
   }'
 ```
 
-## Response Fields
+---
 
-<ResponseField name="cardToken" type="string">
-  An opaque token that represents the stored card. This value is safe to persist in your database and pass to future `POST /api/payment-gateway/process` requests in the `cardToken` field. It does not encode any recoverable card data.
-</ResponseField>
+## Campos da Resposta
 
-## Example Response
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `cardToken` | string | Token opaco que representa o cartão armazenado. Este valor pode ser salvo com segurança no seu banco de dados e passado em futuras requisições `POST /api/payment-gateway/process` no campo `cardToken`. Ele não codifica nenhum dado recuperável do cartão. |
+
+## Exemplo de Resposta
 
 ```json
 {
@@ -142,21 +106,17 @@ curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/tokenize-card \
 }
 ```
 
-<Tip>
-  Pass the `cardToken` value in place of all raw card fields (`cardNumber`, `cardHolderName`, `cardExpirationMonth`, `cardExpirationYear`, `cardSecurityCode`, `cardBrand`) in future `POST /api/payment-gateway/process` calls. This removes the need to re-collect card details from returning customers and keeps your integration out of PCI-DSS scope for card data storage.
-</Tip>
+> 💡 **Dica:** Passe o valor de `cardToken` no lugar de todos os campos brutos do cartão (`cardNumber`, `cardHolderName`, `cardExpirationMonth`, `cardExpirationYear`, `cardSecurityCode`, `cardBrand`) em futuras chamadas a `POST /api/payment-gateway/process`. Isso elimina a necessidade de solicitar novamente os dados do cartão a clientes recorrentes e mantém sua integração fora do escopo de armazenamento de dados do PCI-DSS.
 
 ---
 
-## Error Responses
+## Respostas de Erro
 
-| HTTP Status | Meaning |
+| Status HTTP | Significado |
 |---|---|
-| `400 Bad Request` | A required field is missing or malformed. Check the `errors` array in the response body for field-level details. |
-| `401 Unauthorized` | The `X-Api-Key` header is missing or invalid. |
-| `422 Unprocessable Entity` | The card data was rejected during validation (e.g. expired card, invalid CVV). |
-| `500 Internal Server Error` | An unexpected error occurred on CertoPay's side. Retry with exponential back-off. |
+| `400 Bad Request` | Um campo obrigatório está ausente ou malformado. Verifique o array `errors` no corpo da resposta para detalhes por campo. |
+| `401 Unauthorized` | O cabeçalho `X-Api-Key` está ausente ou é inválido. |
+| `422 Unprocessable Entity` | Os dados do cartão foram rejeitados durante a validação (ex.: cartão vencido, CVV inválido). |
+| `500 Internal Server Error` | Ocorreu um erro inesperado no lado da CertoPay. Tente novamente com recuo exponencial. |
 
-<Warning>
-  The tokenization endpoint must only be called from your **server**. Never call it from a browser or mobile app directly, as doing so would expose your `X-Api-Key`. Use a client-side form to collect card data and POST it to your own backend, which then calls CertoPay.
-</Warning>
+> ⚠️ **Atenção:** O endpoint de tokenização deve ser chamado apenas a partir do seu **servidor**. Nunca o chame diretamente de um navegador ou aplicativo mobile, pois isso exporia sua `X-Api-Key`. Use um formulário no lado do cliente para coletar os dados do cartão e envie-os via POST ao seu próprio backend, que então realiza a chamada à CertoPay.
