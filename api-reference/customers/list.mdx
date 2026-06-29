@@ -1,55 +1,44 @@
+# Listar Todos os Clientes — GET /api/customers
+
+**GET /api/customers — Recupera todos os clientes cadastrados na sua conta CertoPay. Retorna um array de objetos de cliente com detalhes completos.**
+
+Use este endpoint para recuperar todos os clientes cadastrados na sua conta CertoPay. A resposta é um array de objetos de cliente, cada um contendo os mesmos campos retornados quando um cliente é criado pela primeira vez. É útil para construir painéis, reconciliar dados de compradores ou localizar o UUID de um cliente antes de realizar um pedido.
+
 ---
-title: "List All Customers — GET /api/customers Reference"
-sidebarTitle: "List Customers"
-description: "GET /api/customers — Retrieve all customers registered in your CertoPay account. Returns an array of customer objects with full details."
+
+## Requisição
+
+| Parâmetro | Local | Tipo | Obrigatório | Descrição |
+|---|---|---|---|---|
+| `X-Api-Key` | cabeçalho | string | ✅ | Sua chave secreta de API CertoPay. Inclua em toda solicitação como `X-Api-Key: sk_live_sua_chave_aqui`. |
+
+Este endpoint não aceita corpo na requisição nem parâmetros de consulta.
+
 ---
 
-Use this endpoint to retrieve every customer registered under your CertoPay account. The response is an array of customer objects, each containing the same fields returned when a customer is first created. This is useful for building dashboards, reconciling buyer data, or looking up a customer UUID before placing an order.
+## Resposta
 
-## Request
+Uma solicitação bem-sucedida retorna **HTTP 200 OK** com um array de objetos de cliente. Cada objeto no array possui a seguinte estrutura:
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
-</ParamField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | UUID único que identifica o cliente. |
+| `name` | string | Nome completo do cliente. |
+| `email` | string | Endereço de e-mail do cliente. |
+| `document` | string | CPF do cliente (11 dígitos). |
+| `phone` | string | Número de telefone do cliente. |
+| `createdAt` | string | Timestamp ISO 8601 de quando o registro do cliente foi criado. |
 
-This endpoint accepts no request body or query parameters.
+---
 
-## Response
-
-A successful request returns **HTTP 200 OK** with an array of customer objects. Each object in the array has the following shape:
-
-<ResponseField name="id" type="string">
-  Unique UUID identifying the customer.
-</ResponseField>
-
-<ResponseField name="name" type="string">
-  Full name of the customer.
-</ResponseField>
-
-<ResponseField name="email" type="string">
-  Email address of the customer.
-</ResponseField>
-
-<ResponseField name="document" type="string">
-  CPF number (11 digits) of the customer.
-</ResponseField>
-
-<ResponseField name="phone" type="string">
-  Phone number of the customer.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp of when the customer record was created.
-</ResponseField>
-
-## Example
+## Exemplo
 
 ```bash
 curl https://v2.certopaybrasil.com/api/customers \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-```json 200 OK
+```json
 [
   {
     "id": "uuid-do-customer",
