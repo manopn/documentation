@@ -1,62 +1,39 @@
+# Atualizar Campos do Cliente — PATCH /api/customers/{id}
+
+**PATCH /api/customers/{id} — Atualiza parcialmente os dados de um cliente no CertoPay. Envie apenas os campos que deseja alterar; todos os outros permanecem iguais.**
+
+Use este endpoint para atualizar parcialmente um registro de cliente existente. Por ser uma requisição `PATCH`, você só precisa incluir os campos que deseja modificar — todos os campos omitidos permanecerão inalterados. É ideal para corrigir um número de telefone, atualizar um endereço de e-mail ou ajustar um nome sem precisar reenviar todo o payload do cliente. Passe o UUID do cliente na URL onde `{id}` aparece.
+
 ---
-title: "Update Customer Fields — PATCH /api/customers/{id}"
-sidebarTitle: "Update Customer"
-description: "PATCH /api/customers/{id} — Partially update a customer's details in CertoPay. Send only the fields you want to change; all others stay the same."
+
+## Requisição
+
+| Parâmetro | Local | Tipo | Obrigatório | Descrição |
+|---|---|---|---|---|
+| `X-Api-Key` | cabeçalho | string | ✅ | Sua chave secreta de API CertoPay. Inclua em toda solicitação como `X-Api-Key: sk_live_sua_chave_aqui`. |
+| `id` | caminho (path) | string | ✅ | O UUID do cliente a ser atualizado. É o `id` retornado quando o cliente foi criado. |
+| `name` | corpo | string | — | Nome completo atualizado do cliente. Omita este campo para manter o nome inalterado. |
+| `email` | corpo | string | — | Endereço de e-mail atualizado. Omita este campo para manter o e-mail inalterado. |
+| `phone` | corpo | string | — | Número de telefone atualizado no formato brasileiro (ex.: `"(11) 88888-8888"`). Omita este campo para manter o telefone inalterado. |
+
 ---
 
-Use this endpoint to partially update an existing customer record. Because this is a `PATCH` request, you only need to include the fields you want to modify — all omitted fields will remain unchanged. This is ideal for correcting a phone number, updating an email address, or fixing a name without having to resend the full customer payload. Pass the customer UUID in the URL path where `{id}` appears.
+## Resposta
 
-## Request
+Uma solicitação bem-sucedida retorna **HTTP 200 OK** com o objeto completo e atualizado do cliente, refletindo todos os valores atuais dos campos.
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
-</ParamField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | UUID único que identifica o cliente (inalterado). |
+| `name` | string | Nome completo — atualizado se fornecido na requisição, caso contrário mantém o valor anterior. |
+| `email` | string | Endereço de e-mail — atualizado se fornecido na requisição, caso contrário mantém o valor anterior. |
+| `document` | string | CPF (11 dígitos). Este campo não pode ser alterado via PATCH. |
+| `phone` | string | Número de telefone — atualizado se fornecido na requisição, caso contrário mantém o valor anterior. |
+| `createdAt` | string | Timestamp ISO 8601 da data de criação original (inalterado). |
 
-<ParamField path="id" type="string" required>
-  The UUID of the customer to update. This is the `id` returned when the customer was created.
-</ParamField>
+---
 
-<ParamField body="name" type="string">
-  Updated full name of the customer. Omit this field to leave the name unchanged.
-</ParamField>
-
-<ParamField body="email" type="string">
-  Updated email address. Omit this field to leave the email unchanged.
-</ParamField>
-
-<ParamField body="phone" type="string">
-  Updated phone number in Brazilian format (e.g. `"(11) 88888-8888"`). Omit this field to leave the phone unchanged.
-</ParamField>
-
-## Response
-
-A successful request returns **HTTP 200 OK** with the complete updated customer object, reflecting all current field values.
-
-<ResponseField name="id" type="string">
-  Unique UUID identifying the customer (unchanged).
-</ResponseField>
-
-<ResponseField name="name" type="string">
-  Full name — updated if provided in the request, otherwise the previous value.
-</ResponseField>
-
-<ResponseField name="email" type="string">
-  Email address — updated if provided in the request, otherwise the previous value.
-</ResponseField>
-
-<ResponseField name="document" type="string">
-  CPF number (11 digits). This field cannot be changed via PATCH.
-</ResponseField>
-
-<ResponseField name="phone" type="string">
-  Phone number — updated if provided in the request, otherwise the previous value.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp of the original creation date (unchanged).
-</ResponseField>
-
-## Example
+## Exemplo
 
 ```bash
 curl -X PATCH https://v2.certopaybrasil.com/api/customers/uuid-do-customer \
@@ -65,7 +42,7 @@ curl -X PATCH https://v2.certopaybrasil.com/api/customers/uuid-do-customer \
   -d '{"phone": "(11) 88888-8888"}'
 ```
 
-```json 200 OK
+```json
 {
   "id": "uuid-do-customer",
   "name": "João da Silva",
