@@ -1,10 +1,14 @@
 ---
-title: "Retry a Webhook Delivery — POST /api/webhooks/deliveries"
-sidebarTitle: "Retry Delivery"
-description: "POST /api/webhooks/deliveries/{deliveryId}/retry — Manually trigger a retry for a failed webhook delivery. Useful for recovering missed transaction events."
+
+# Reenviar uma Entrega de Webhook — POST /api/webhooks/deliveries
+
+**Descrição:** `POST /api/webhooks/deliveries/{deliveryId}/retry` — Dispara manualmente o reenvio de uma entrega de webhook com falha. Útil para recuperar eventos de transação perdidos.
+
 ---
 
-Use this endpoint to manually re-trigger a webhook delivery that previously failed or was not acknowledged by your server. When you initiate a retry, CertoPay sends the original event payload again to your currently registered webhook URL. This is especially helpful for recovering critical missed events — such as a `transaction.paid` notification that your server failed to process due to a temporary outage or misconfiguration.
+Use este endpoint para reenviar manualmente uma entrega de webhook que anteriormente falhou ou não foi confirmada pelo seu servidor. Ao iniciar um reenvio, a CertoPay envia novamente o payload do evento original para a URL de webhook atualmente registrada. Isso é especialmente útil para recuperar eventos críticos perdidos — como uma notificação `transaction.paid` que seu servidor não conseguiu processar devido a uma indisponibilidade temporária ou configuração incorreta.
+
+---
 
 ## Endpoint
 
@@ -12,32 +16,40 @@ Use this endpoint to manually re-trigger a webhook delivery that previously fail
 POST https://v2.certopaybrasil.com/api/webhooks/deliveries/{deliveryId}/retry
 ```
 
-## Authentication
+---
 
-All requests must include your secret API key in the `X-Api-Key` header.
+## Autenticação
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
-</ParamField>
+Todas as requisições devem incluir sua chave de API secreta no cabeçalho `X-Api-Key`.
 
-## Path Parameters
+| Cabeçalho | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta da CertoPay (ex.: `sk_live_sua_chave_aqui`). |
 
-<ParamField path="deliveryId" type="string" required>
-  The unique UUID of the webhook delivery you want to retry. Retrieve this from the `deliveryId` field in the [GET /api/webhooks/deliveries](/api-reference/webhooks/deliveries) response.
-</ParamField>
+---
 
-## Example Request
+## Parâmetros de Caminho
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `deliveryId` | string | ✅ | UUID único da entrega de webhook que você deseja reenviar. Recupere este valor no campo `deliveryId` da resposta de `GET /api/webhooks/deliveries`. |
+
+---
+
+## Exemplo de Requisição
 
 ```bash
 curl -X POST https://v2.certopaybrasil.com/api/webhooks/deliveries/delivery-uuid/retry \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-## Response
+---
 
-### 200 — Success
+## Resposta
 
-A successful call confirms that the retry has been queued and the original event payload will be re-sent to your registered webhook URL.
+### 200 — Sucesso
+
+Uma chamada bem-sucedida confirma que o reenvio foi enfileirado e o payload do evento original será reenviado para a URL de webhook registrada.
 
 ```json
 {
@@ -47,20 +59,14 @@ A successful call confirms that the retry has been queued and the original event
 }
 ```
 
-### Response Fields
+### Campos da Resposta
 
-<ResponseField name="success" type="boolean">
-  `true` when the retry was accepted and queued for delivery.
-</ResponseField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `success` | boolean | `true` quando o reenvio foi aceito e enfileirado para entrega. |
+| `deliveryId` | string | UUID do registro de entrega que foi enfileirado para reenvio. |
+| `message` | string | Mensagem de confirmação legível. |
 
-<ResponseField name="deliveryId" type="string">
-  The UUID of the delivery record that was queued for retry.
-</ResponseField>
+---
 
-<ResponseField name="message" type="string">
-  A human-readable confirmation message.
-</ResponseField>
-
-<Note>
-  To find the `deliveryId` for a failed delivery, call [GET /api/webhooks/deliveries](/api-reference/webhooks/deliveries) and filter by `status=FAILED`. Copy the `deliveryId` from any delivery you want to retry and pass it as the path parameter to this endpoint.
-</Note>
+> 📝 **Nota:** Para encontrar o `deliveryId` de uma entrega com falha, chame `GET /api/webhooks/deliveries` filtrando por `status=FAILED`. Copie o `deliveryId` de qualquer entrega que deseje reenviar e passe-o como parâmetro de caminho para este endpoint.
