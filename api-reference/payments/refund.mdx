@@ -1,12 +1,18 @@
----
-title: "POST /api/payment-gateway/refund — Issue a Refund"
-sidebarTitle: "Refund"
-description: "POST /api/payment-gateway/refund — Issue a full or partial refund for a captured transaction. Partial refunds require the amount field in centavos."
+Aqui está a documentação traduzida para o português:
+
 ---
 
-The `/api/payment-gateway/refund` endpoint allows you to reverse a captured transaction either in full or in part. Full refunds return the entire charged amount to the buyer, while partial refunds let you specify an exact amount in centavos — useful for scenarios such as retroactive discounts, cancelled line-items, or pro-rated returns. Refunds can only be issued against transactions in the `CAPTURED` or `PAID` state.
+# POST /api/payment-gateway/refund — Emitir um Reembolso
 
-## Base URL
+**Descrição:** `POST /api/payment-gateway/refund` — Emite um reembolso total ou parcial para uma transação capturada. Reembolsos parciais exigem o campo `amount` em centavos.
+
+---
+
+O endpoint `/api/payment-gateway/refund` permite reverter uma transação capturada de forma total ou parcial. Reembolsos totais devolvem o valor integral cobrado ao comprador, enquanto reembolsos parciais permitem especificar um valor exato em centavos — útil em cenários como descontos retroativos, itens cancelados ou devoluções proporcionais. Reembolsos só podem ser emitidos para transações nos estados `CAPTURED` ou `PAID`.
+
+---
+
+## URL Base
 
 ```
 https://v2.certopaybrasil.com/api
@@ -18,193 +24,143 @@ https://v2.certopaybrasil.com/api
 POST /payment-gateway/refund
 ```
 
-## Request Headers
-
-<ParamField header="X-Api-Key" type="string" required>
-  Your secret API key. Keep this server-side and never expose it in client-facing code.
-</ParamField>
-
-<ParamField header="Content-Type" type="string" required>
-  Must be `application/json`.
-</ParamField>
-
 ---
 
-## Request Body & Examples
+## Cabeçalhos da Requisição
 
-<Tabs>
-  <Tab title="Full Refund">
-    A full refund reverses the entire original charge amount. Omit the `amount` field entirely — CertoPay will automatically use the total transaction value.
-
-    ### Request Fields
-
-    <ParamField body="transactionId" type="string" required>
-      The unique identifier of the transaction to refund. This is the `transactionId` returned by `POST /api/payment-gateway/process`.
-    </ParamField>
-
-    <ParamField body="reason" type="string">
-      A human-readable explanation for the refund. Stored for audit purposes and visible in your CertoPay dashboard. Example: `"Customer request"`.
-    </ParamField>
-
-    ### Example Request
-
-    ```bash
-    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/refund \
-      -H "X-Api-Key: sk_live_sua_chave_aqui" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "transactionId": "uuid-da-transacao",
-        "reason": "Customer request"
-      }'
-    ```
-
-    ### Response Fields
-
-    <ResponseField name="transactionId" type="string">
-      The identifier of the refunded transaction.
-    </ResponseField>
-
-    <ResponseField name="status" type="string">
-      Updated transaction status. A successful full refund sets this to `"REFUNDED"`.
-    </ResponseField>
-
-    <ResponseField name="method" type="string">
-      The original payment method (`"PIX"`, `"BOLETO"`, or `"CARD"`).
-    </ResponseField>
-
-    <ResponseField name="amount" type="integer">
-      The original charged amount in centavos.
-    </ResponseField>
-
-    <ResponseField name="refundedAmount" type="integer">
-      The total amount refunded in centavos. For a full refund this equals `amount`.
-    </ResponseField>
-
-    <ResponseField name="reason" type="string">
-      The reason string provided in the request, if any.
-    </ResponseField>
-
-    <ResponseField name="refundedAt" type="string">
-      ISO 8601 timestamp of when the refund was processed.
-    </ResponseField>
-
-    ### Example Response
-
-    ```json
-    {
-      "transactionId": "uuid-da-transacao",
-      "status": "REFUNDED",
-      "method": "CARD",
-      "amount": 29700,
-      "refundedAmount": 29700,
-      "reason": "Customer request",
-      "refundedAt": "2026-06-26T14:32:00Z"
-    }
-    ```
-  </Tab>
-
-  <Tab title="Partial Refund">
-    A partial refund returns a specific amount — less than the original charge — to the buyer. Include the `amount` field set to the exact centavo value you wish to refund. You may issue multiple partial refunds against the same transaction as long as the cumulative refunded amount does not exceed the original charge.
-
-    ### Request Fields
-
-    <ParamField body="transactionId" type="string" required>
-      The unique identifier of the transaction to partially refund. This is the `transactionId` returned by `POST /api/payment-gateway/process`.
-    </ParamField>
-
-    <ParamField body="amount" type="integer" required>
-      The amount to refund in **centavos**. Must be greater than `0` and less than or equal to the remaining refundable balance on the transaction. Example: `10000` for R$100,00.
-    </ParamField>
-
-    <ParamField body="reason" type="string">
-      A human-readable explanation for the partial refund. Stored for audit purposes and visible in your CertoPay dashboard. Example: `"Discount applied retroactively"`.
-    </ParamField>
-
-    ### Example Request
-
-    ```bash
-    curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/refund \
-      -H "X-Api-Key: sk_live_sua_chave_aqui" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "transactionId": "uuid-da-transacao",
-        "amount": 10000,
-        "reason": "Discount applied retroactively"
-      }'
-    ```
-
-    ### Response Fields
-
-    <ResponseField name="transactionId" type="string">
-      The identifier of the partially refunded transaction.
-    </ResponseField>
-
-    <ResponseField name="status" type="string">
-      Updated transaction status. A successful partial refund sets this to `"PARTIAL_REFUND"`.
-    </ResponseField>
-
-    <ResponseField name="method" type="string">
-      The original payment method (`"PIX"`, `"BOLETO"`, or `"CARD"`).
-    </ResponseField>
-
-    <ResponseField name="amount" type="integer">
-      The original charged amount in centavos.
-    </ResponseField>
-
-    <ResponseField name="refundedAmount" type="integer">
-      The cumulative total refunded so far in centavos, including this and any prior partial refunds against the same transaction.
-    </ResponseField>
-
-    <ResponseField name="reason" type="string">
-      The reason string provided in the request, if any.
-    </ResponseField>
-
-    <ResponseField name="refundedAt" type="string">
-      ISO 8601 timestamp of when this partial refund was processed.
-    </ResponseField>
-
-    ### Example Response
-
-    ```json
-    {
-      "transactionId": "uuid-da-transacao",
-      "status": "PARTIAL_REFUND",
-      "method": "CARD",
-      "amount": 29700,
-      "refundedAmount": 10000,
-      "reason": "Discount applied retroactively",
-      "refundedAt": "2026-06-26T15:10:00Z"
-    }
-    ```
-
-    <Note>
-      Partial refunds set the transaction status to `PARTIAL_REFUND`; full refunds (or a series of partial refunds that together equal the original amount) set it to `REFUNDED`. Once a transaction reaches `REFUNDED` status no further refunds can be issued against it.
-    </Note>
-  </Tab>
-</Tabs>
-
----
-
-## Refund Eligibility by Payment Method
-
-| Method | Full Refund | Partial Refund | Notes |
+| Cabeçalho | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| **CARD** | ✅ | ✅ | Refunds are processed immediately; settlement timeline depends on the buyer's issuing bank (typically 5–10 business days). |
-| **PIX** | ✅ | ✅ | PIX refunds (devoluções) are processed in real time via the Banco Central do Brasil infrastructure. |
-| **BOLETO** | ✅ | ❌ | Boleto refunds require the buyer's bank account details to be provided and are processed manually. Contact CertoPay support for boleto refund instructions. |
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta. Mantenha-a no servidor e nunca a exponha em código voltado ao cliente. |
+| `Content-Type` | string | ✅ | Deve ser `application/json`. |
 
 ---
 
-## Error Responses
+## Corpo da Requisição e Exemplos
 
-| HTTP Status | Meaning |
+### Reembolso Total
+
+Um reembolso total reverte o valor integral da cobrança original. Omita o campo `amount` — a CertoPay usará automaticamente o valor total da transação.
+
+**Campos da Requisição**
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `transactionId` | string | ✅ | Identificador único da transação a ser reembolsada. É o `transactionId` retornado por `POST /api/payment-gateway/process`. |
+| `reason` | string | ❌ | Explicação legível para o reembolso. Armazenada para fins de auditoria e visível no painel da CertoPay. Exemplo: `"Solicitação do cliente"`. |
+
+**Exemplo de Requisição**
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/refund \
+  -H "X-Api-Key: sk_live_sua_chave_aqui" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactionId": "uuid-da-transacao",
+    "reason": "Solicitação do cliente"
+  }'
+```
+
+**Campos da Resposta**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `transactionId` | string | Identificador da transação reembolsada. |
+| `status` | string | Status atualizado da transação. Um reembolso total bem-sucedido define este campo como `"REFUNDED"`. |
+| `method` | string | Método de pagamento original (`"PIX"`, `"BOLETO"` ou `"CARD"`). |
+| `amount` | integer | Valor original cobrado em centavos. |
+| `refundedAmount` | integer | Valor total reembolsado em centavos. Em um reembolso total, é igual a `amount`. |
+| `reason` | string | A justificativa fornecida na requisição, se houver. |
+| `refundedAt` | string | Timestamp ISO 8601 de quando o reembolso foi processado. |
+
+**Exemplo de Resposta**
+
+```json
+{
+  "transactionId": "uuid-da-transacao",
+  "status": "REFUNDED",
+  "method": "CARD",
+  "amount": 29700,
+  "refundedAmount": 29700,
+  "reason": "Solicitação do cliente",
+  "refundedAt": "2026-06-26T14:32:00Z"
+}
+```
+
+---
+
+### Reembolso Parcial
+
+Um reembolso parcial devolve ao comprador um valor específico — menor que a cobrança original. Inclua o campo `amount` com o valor exato em centavos que deseja reembolsar. É possível emitir múltiplos reembolsos parciais para a mesma transação, desde que o valor acumulado não ultrapasse a cobrança original.
+
+**Campos da Requisição**
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `transactionId` | string | ✅ | Identificador único da transação a ser parcialmente reembolsada. É o `transactionId` retornado por `POST /api/payment-gateway/process`. |
+| `amount` | integer | ✅ | Valor a reembolsar em **centavos**. Deve ser maior que `0` e menor ou igual ao saldo reembolsável restante na transação. Exemplo: `10000` para R$ 100,00. |
+| `reason` | string | ❌ | Explicação legível para o reembolso parcial. Armazenada para fins de auditoria e visível no painel da CertoPay. Exemplo: `"Desconto aplicado retroativamente"`. |
+
+**Exemplo de Requisição**
+
+```bash
+curl -X POST https://v2.certopaybrasil.com/api/payment-gateway/refund \
+  -H "X-Api-Key: sk_live_sua_chave_aqui" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transactionId": "uuid-da-transacao",
+    "amount": 10000,
+    "reason": "Desconto aplicado retroativamente"
+  }'
+```
+
+**Campos da Resposta**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `transactionId` | string | Identificador da transação parcialmente reembolsada. |
+| `status` | string | Status atualizado da transação. Um reembolso parcial bem-sucedido define este campo como `"PARTIAL_REFUND"`. |
+| `method` | string | Método de pagamento original (`"PIX"`, `"BOLETO"` ou `"CARD"`). |
+| `amount` | integer | Valor original cobrado em centavos. |
+| `refundedAmount` | integer | Total acumulado reembolsado até o momento em centavos, incluindo este e quaisquer reembolsos parciais anteriores na mesma transação. |
+| `reason` | string | A justificativa fornecida na requisição, se houver. |
+| `refundedAt` | string | Timestamp ISO 8601 de quando este reembolso parcial foi processado. |
+
+**Exemplo de Resposta**
+
+```json
+{
+  "transactionId": "uuid-da-transacao",
+  "status": "PARTIAL_REFUND",
+  "method": "CARD",
+  "amount": 29700,
+  "refundedAmount": 10000,
+  "reason": "Desconto aplicado retroativamente",
+  "refundedAt": "2026-06-26T15:10:00Z"
+}
+```
+
+> **Nota:** Reembolsos parciais definem o status da transação como `PARTIAL_REFUND`; reembolsos totais (ou uma série de reembolsos parciais que somam o valor original) definem como `REFUNDED`. Uma vez que a transação atinge o status `REFUNDED`, nenhum reembolso adicional pode ser emitido contra ela.
+
+---
+
+## Elegibilidade de Reembolso por Método de Pagamento
+
+| Método | Reembolso Total | Reembolso Parcial | Observações |
+|---|---|---|---|
+| **CARD** | ✅ | ✅ | Reembolsos são processados imediatamente; o prazo de liquidação depende do banco emissor do comprador (normalmente 5–10 dias úteis). |
+| **PIX** | ✅ | ✅ | Reembolsos via PIX (devoluções) são processados em tempo real pela infraestrutura do Banco Central do Brasil. |
+| **BOLETO** | ✅ | ❌ | Reembolsos de boleto exigem que os dados bancários do comprador sejam fornecidos e são processados manualmente. Entre em contato com o suporte da CertoPay para instruções sobre reembolso de boleto. |
+
+---
+
+## Respostas de Erro
+
+| Status HTTP | Significado |
 |---|---|
-| `400 Bad Request` | A required field is missing or the `amount` exceeds the refundable balance. |
-| `401 Unauthorized` | The `X-Api-Key` header is missing or invalid. |
-| `404 Not Found` | No transaction was found for the provided `transactionId`. |
-| `409 Conflict` | The transaction has already been fully refunded or is in a non-refundable state (e.g. `PENDING`, `DECLINED`). |
-| `500 Internal Server Error` | An unexpected error occurred on CertoPay's side. Retry with exponential back-off. |
+| `400 Bad Request` | Um campo obrigatório está ausente ou o `amount` ultrapassa o saldo reembolsável. |
+| `401 Unauthorized` | O cabeçalho `X-Api-Key` está ausente ou é inválido. |
+| `404 Not Found` | Nenhuma transação foi encontrada para o `transactionId` fornecido. |
+| `409 Conflict` | A transação já foi totalmente reembolsada ou está em um estado não reembolsável (ex.: `PENDING`, `DECLINED`). |
+| `500 Internal Server Error` | Ocorreu um erro inesperado no lado da CertoPay. Tente novamente com recuo exponencial. |
 
-<Warning>
-  Refunds can only be issued against transactions in a **captured or paid** state. Attempting to refund a `PENDING`, `DECLINED`, or already `REFUNDED` transaction will return a `409 Conflict` error. Always verify the transaction status via `GET /api/payment-gateway/transaction/{transactionId}` before initiating a refund.
-</Warning>
+> ⚠️ **Atenção:** Reembolsos só podem ser emitidos para transações em estado **capturado ou pago**. Tentar reembolsar uma transação `PENDING`, `DECLINED` ou já `REFUNDED` retornará um erro `409 Conflict`. Sempre verifique o status da transação via `GET /api/payment-gateway/transaction/{transactionId}` antes de iniciar um reembolso.
