@@ -1,59 +1,61 @@
 ---
-title: "CertoPay: Brazilian Payment Gateway API"
-sidebarTitle: "Home"
-description: "Accept PIX, Boleto, and Credit Card payments in Brazil with the CertoPay API. Simple integration, real-time webhooks, and full transaction management."
+
+---
+title: "CertoPay: API de Gateway de Pagamentos Brasileiro"
+sidebarTitle: "Início"
+description: "Aceite pagamentos via PIX, Boleto e Cartão de Crédito no Brasil com a API CertoPay. Integração simples, webhooks em tempo real e gerenciamento completo de transações."
 ---
 
-CertoPay is a Brazilian payment gateway (PSP) that lets you accept PIX, Boleto, and Credit Card payments through a single REST API. Create customers, generate payment instructions, track transactions, and receive real-time notifications — all with a single API Key.
+CertoPay é um gateway de pagamentos brasileiro (PSP) que permite aceitar PIX, Boleto e Cartão de Crédito por meio de uma única API REST. Crie clientes, gere instruções de pagamento, acompanhe transações e receba notificações em tempo real — tudo com uma única Chave de API.
 
 <CardGroup cols={2}>
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Make your first payment request in minutes with a step-by-step walkthrough.
+  <Card title="Início Rápido" icon="rocket" href="/quickstart">
+    Realize sua primeira requisição de pagamento em minutos com um passo a passo detalhado.
   </Card>
-  <Card title="Authentication" icon="key" href="/authentication">
-    Learn how to get and use your API Key to authenticate every request.
+  <Card title="Autenticação" icon="key" href="/authentication">
+    Saiba como obter e usar sua Chave de API para autenticar todas as requisições.
   </Card>
-  <Card title="Payment Methods" icon="credit-card" href="/payments/overview">
-    Explore PIX, Boleto, and Credit Card payment flows with code examples.
+  <Card title="Métodos de Pagamento" icon="credit-card" href="/payments/overview">
+    Explore os fluxos de pagamento via PIX, Boleto e Cartão de Crédito com exemplos de código.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/payments/process">
-    Full reference for every endpoint, request parameter, and response field.
+  <Card title="Referência da API" icon="code" href="/api-reference/payments/process">
+    Referência completa de todos os endpoints, parâmetros de requisição e campos de resposta.
   </Card>
 </CardGroup>
 
-## How CertoPay works
+## Como a CertoPay funciona
 
-Every payment follows the same three-step flow: create a customer, create an order, and process the payment.
+Todo pagamento segue o mesmo fluxo de três etapas: crie um cliente, crie um pedido e processe o pagamento.
 
 <Steps>
-  <Step title="Create a customer">
-    Register the buyer's name, email, CPF, and phone number. You only need to do this once per buyer — reuse the same `customerId` for future orders.
+  <Step title="Crie um cliente">
+    Cadastre o nome, e-mail, CPF e telefone do comprador. Isso só precisa ser feito uma vez por comprador — reutilize o mesmo `customerId` em pedidos futuros.
   </Step>
-  <Step title="Create an order">
-    Link the customer to an amount in centavos (e.g., R$ 297.00 = `29700`). The order returns an `orderId` you'll use at checkout.
+  <Step title="Crie um pedido">
+    Vincule o cliente a um valor em centavos (ex.: R$ 297,00 = `29700`). O pedido retorna um `orderId` que você usará no checkout.
   </Step>
-  <Step title="Process the payment">
-    Call `POST /api/payment-gateway/process` with the `orderId` and payment method (`PIX`, `BOLETO`, or `CARD`). CertoPay returns the payment instruction (QR Code, barcode, or approval status) immediately.
+  <Step title="Processe o pagamento">
+    Chame `POST /api/payment-gateway/process` com o `orderId` e o método de pagamento (`PIX`, `BOLETO` ou `CARD`). A CertoPay retorna imediatamente a instrução de pagamento (QR Code, código de barras ou status de aprovação).
   </Step>
-  <Step title="Receive the confirmation">
-    Configure a webhook endpoint on your server to receive real-time `transaction.paid` events when payment is confirmed.
+  <Step title="Receba a confirmação">
+    Configure um endpoint de webhook no seu servidor para receber eventos `transaction.paid` em tempo real quando o pagamento for confirmado.
   </Step>
 </Steps>
 
-## Payment methods
+## Métodos de pagamento
 
 <CardGroup cols={3}>
   <Card title="PIX" icon="bolt" href="/payments/pix">
-    Instant payments 24/7. Returns an EMV QR Code and copy-paste code.
+    Pagamentos instantâneos 24/7. Retorna um QR Code EMV e código para copiar e colar.
   </Card>
   <Card title="Boleto" icon="file-invoice" href="/payments/boleto">
-    Banking slips with barcode and PDF. Standard 7-day expiration.
+    Boletos bancários com código de barras e PDF. Vencimento padrão de 7 dias.
   </Card>
-  <Card title="Credit Card" icon="credit-card" href="/payments/credit-card">
-    Visa, Mastercard, and Elo with installments up to 12×.
+  <Card title="Cartão de Crédito" icon="credit-card" href="/payments/credit-card">
+    Visa, Mastercard e Elo com parcelamento em até 12×.
   </Card>
 </CardGroup>
 
 <Note>
-  All amounts in the CertoPay API are in **centavos** (integer). R$ 297,00 = `29700`.
+  Todos os valores na API CertoPay são em **centavos** (inteiro). R$ 297,00 = `29700`.
 </Note>
