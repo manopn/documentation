@@ -1,10 +1,14 @@
 ---
-title: "GET /api/webhooks — Retrieve Webhook Configuration"
-sidebarTitle: "Get Webhook"
-description: "GET /api/webhooks — Retrieve your registered CertoPay webhook URL and its current status. Confirm your setup is correct before testing any payment flow."
+
+# GET /api/webhooks — Recuperar Configuração do Webhook
+
+**Descrição:** `GET /api/webhooks` — Recupera a URL do webhook registrada na sua conta CertoPay e seu status atual. Confirme que a configuração está correta antes de testar qualquer fluxo de pagamento.
+
 ---
 
-Use this endpoint to inspect your current webhook configuration. The response includes the URL registered to receive transaction event notifications and its active status. This is useful for verifying that your webhook is correctly set up before testing a payment flow, or for confirming what endpoint is on record after making changes via [POST /api/webhooks/upsert](/api-reference/webhooks/upsert).
+Use este endpoint para inspecionar sua configuração atual de webhook. A resposta inclui a URL registrada para receber notificações de eventos de transação e seu status ativo. Isso é útil para verificar se o webhook está configurado corretamente antes de testar um fluxo de pagamento, ou para confirmar qual endpoint está registrado após realizar alterações via `POST /api/webhooks/upsert`.
+
+---
 
 ## Endpoint
 
@@ -12,26 +16,32 @@ Use this endpoint to inspect your current webhook configuration. The response in
 GET https://v2.certopaybrasil.com/api/webhooks
 ```
 
-## Authentication
+---
 
-All requests must include your secret API key in the `X-Api-Key` header.
+## Autenticação
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key (e.g. `sk_live_sua_chave_aqui`).
-</ParamField>
+Todas as requisições devem incluir sua chave de API secreta no cabeçalho `X-Api-Key`.
 
-## Example Request
+| Cabeçalho | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `X-Api-Key` | string | ✅ | Sua chave de API secreta da CertoPay (ex.: `sk_live_sua_chave_aqui`). |
+
+---
+
+## Exemplo de Requisição
 
 ```bash
 curl https://v2.certopaybrasil.com/api/webhooks \
   -H "X-Api-Key: sk_live_sua_chave_aqui"
 ```
 
-## Response
+---
 
-Returns the webhook configuration object for your account, including the registered URL and its current status.
+## Resposta
 
-### 200 — Success
+Retorna o objeto de configuração do webhook da sua conta, incluindo a URL registrada e seu status atual.
+
+### 200 — Sucesso
 
 ```json
 {
@@ -43,28 +53,16 @@ Returns the webhook configuration object for your account, including the registe
 }
 ```
 
-### Response Fields
+### Campos da Resposta
 
-<ResponseField name="id" type="string">
-  Unique identifier (UUID) for your webhook configuration.
-</ResponseField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | Identificador único (UUID) da sua configuração de webhook. |
+| `url` | string | A URL HTTPS atualmente registrada para receber notificações de eventos de transação. |
+| `status` | string | Status atual do webhook. `ACTIVE` significa que as notificações estão sendo entregues; `INACTIVE` significa que o webhook foi desativado. |
+| `createdAt` | string | Timestamp ISO 8601 de quando o webhook foi registrado pela primeira vez. |
+| `updatedAt` | string | Timestamp ISO 8601 de quando a configuração do webhook foi modificada pela última vez. |
 
-<ResponseField name="url" type="string">
-  The HTTPS URL currently registered to receive transaction event notifications.
-</ResponseField>
+---
 
-<ResponseField name="status" type="string">
-  Current status of the webhook. `ACTIVE` means notifications are being delivered; `INACTIVE` means the webhook has been disabled.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp for when the webhook was first registered.
-</ResponseField>
-
-<ResponseField name="updatedAt" type="string">
-  ISO 8601 timestamp for when the webhook configuration was last modified.
-</ResponseField>
-
-<Note>
-  If no webhook has been registered for your account, this endpoint may return a `404` or an empty response. Use [POST /api/webhooks/upsert](/api-reference/webhooks/upsert) to register a URL and begin receiving notifications.
-</Note>
+> 📝 **Nota:** Se nenhum webhook foi registrado na sua conta, este endpoint pode retornar um `404` ou uma resposta vazia. Use `POST /api/webhooks/upsert` para registrar uma URL e começar a receber notificações.
