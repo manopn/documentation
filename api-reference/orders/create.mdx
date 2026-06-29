@@ -1,54 +1,38 @@
+# Criar Novo Pedido de Pagamento — POST /api/orders
+
+**POST /api/orders — Cria um pedido de pagamento no CertoPay vinculando um cliente a um valor em centavos. Retorna o orderId para processamento do pagamento.**
+
+Use este endpoint para criar um novo pedido de pagamento no CertoPay. Um pedido representa a intenção comercial de cobrar um valor específico de um cliente cadastrado, e deve ser criado antes que qualquer método de pagamento (Pix, boleto ou cartão de crédito) possa ser aplicado. Você deve fornecer um `customerId` válido obtido via `POST /api/customers`, junto com o valor da cobrança expresso em **centavos** (a menor unidade monetária brasileira). O `id` do pedido retornado se torna o `orderId` que você referenciará ao processar o pagamento de fato.
+
 ---
-title: "Create New Payment Order — POST /api/orders Guide"
-sidebarTitle: "Create Order"
-description: "POST /api/orders — Create a payment order in CertoPay linking a customer to an amount in centavos. Returns the orderId for payment processing."
+
+## Requisição
+
+| Parâmetro | Local | Tipo | Obrigatório | Descrição |
+|---|---|---|---|---|
+| `X-Api-Key` | cabeçalho | string | ✅ | Sua chave secreta de API CertoPay. Inclua em toda solicitação como `X-Api-Key: sk_live_sua_chave_aqui`. |
+| `customerId` | corpo | string | ✅ | O UUID do cliente a ser cobrado. É o `id` retornado por `POST /api/customers`. O cliente já deve existir na sua conta. |
+| `amount` | corpo | integer | ✅ | Valor total da cobrança em **centavos**. Por exemplo, `29700` representa R$ 297,00. Deve ser um número inteiro positivo maior que zero. |
+
 ---
 
-Use this endpoint to create a new payment order in CertoPay. An order represents the commercial intent to charge a specific amount to a registered customer, and must be created before any payment method (Pix, boleto, or credit card) can be applied. You must supply a valid `customerId` obtained from `POST /api/customers`, along with the charge amount expressed in **centavos** (the smallest Brazilian currency unit). The returned order `id` becomes the `orderId` you will reference when processing the actual payment.
+## Resposta
 
-## Request
+Uma solicitação bem-sucedida retorna **HTTP 201 Created** com o objeto do pedido recém-criado.
 
-<ParamField header="X-Api-Key" type="string" required>
-  Your CertoPay secret API key. Include it in every request as `X-Api-Key: sk_live_sua_chave_aqui`.
-</ParamField>
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | string | UUID único atribuído a este pedido. **Guarde este valor** — ele é obrigatório como `orderId` em todas as requisições de pagamento posteriores. |
+| `customerId` | string | UUID do cliente vinculado a este pedido, repetido da requisição. |
+| `amount` | integer | Valor da cobrança em centavos, repetido da requisição. |
+| `status` | string | Status atual do pedido. Pedidos recém-criados sempre iniciam como `"PENDING"`. Outros valores possíveis conforme o pedido avança: `"PAID"`, `"CANCELLED"`, `"EXPIRED"`. |
+| `createdAt` | string | Timestamp ISO 8601 registrando quando o pedido foi criado (ex.: `"2026-06-26T10:00:00Z"`). |
 
-<ParamField body="customerId" type="string" required>
-  The UUID of the customer being charged. This is the `id` returned by `POST /api/customers`. The customer must already exist in your account.
-</ParamField>
+> ℹ️ **Nota:** Guarde o `id` retornado nesta resposta — ele se torna o `orderId` obrigatório em todas as requisições de pagamento subsequentes (Pix, boleto e cartão de crédito). Sem ele não é possível cobrar o cliente.
 
-<ParamField body="amount" type="integer" required>
-  Total charge amount in **centavos** (Brazilian cents). For example, `29700` represents R$ 297,00. Must be a positive integer greater than zero.
-</ParamField>
+---
 
-## Response
-
-A successful request returns **HTTP 201 Created** with the newly created order object.
-
-<ResponseField name="id" type="string">
-  Unique UUID assigned to this order. **Save this value** — it is required as `orderId` in all downstream payment requests.
-</ResponseField>
-
-<ResponseField name="customerId" type="string">
-  UUID of the customer linked to this order, echoed from the request.
-</ResponseField>
-
-<ResponseField name="amount" type="integer">
-  Charge amount in centavos, echoed from the request.
-</ResponseField>
-
-<ResponseField name="status" type="string">
-  Current status of the order. Newly created orders always start as `"PENDING"`. Other possible values as the order progresses: `"PAID"`, `"CANCELLED"`, `"EXPIRED"`.
-</ResponseField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp recording when the order was created (e.g. `"2026-06-26T10:00:00Z"`).
-</ResponseField>
-
-<Note>
-  Save the `id` returned in this response — it becomes the `orderId` required in all subsequent payment requests (Pix, boleto, and credit card). Without it you cannot charge the customer.
-</Note>
-
-## Example
+## Exemplo
 
 ```bash
 curl -X POST https://v2.certopaybrasil.com/api/orders \
@@ -60,7 +44,7 @@ curl -X POST https://v2.certopaybrasil.com/api/orders \
   }'
 ```
 
-```json 201 Created
+```json
 {
   "id": "uuid-do-pedido",
   "customerId": "uuid-do-customer",
